@@ -2,166 +2,126 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام مطابقة الصناديق والمعاملات</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- مكتبة خطوط وأيقونات Google Fonts & FontAwesome -->
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>نظام G STORE - تسجيل الدخول وإدارة الموظفين</title>
+    <!-- استدعاء مكتبة Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Tahoma, sans-serif; background: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .box { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 350px; text-align: center; }
+        input, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .hidden { display: none; }
+        .admin-section { margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px; text-align: right; }
+    </style>
 </head>
 <body>
 
-    <!-- شاشة تسجيل الدخول -->
-    <div id="login-screen" class="auth-container">
-        <div class="auth-card">
-            <div class="logo-area">
-                <i class="fa-solid fa-cash-register"></i>
-                <h2>نظام مطابقة الصناديق</h2>
-                <p>تسجيل الدخول إلى النظام</p>
-            </div>
-            <form id="login-form">
-                <div class="form-group">
-                    <label for="username"><i class="fa-solid fa-user"></i> اسم المستخدم</label>
-                    <input type="text" id="username" required placeholder="أدخل اسم المستخدم">
-                </div>
-                <div class="form-group">
-                    <label for="password"><i class="fa-solid fa-lock"></i> كلمة المرور</label>
-                    <input type="password" id="password" required placeholder="أدخل كلمة المرور">
-                </div>
-                <button type="submit" class="btn-primary">دخول <i class="fa-solid fa-arrow-right-to-bracket"></i></button>
-                <div id="login-error" class="error-msg hidden">اسم المستخدم أو كلمة المرور غير صحيحة</div>
-            </form>
+    <!-- نافذة تسجيل الدخول -->
+    <div class="box" id="login-box">
+        <h3>تسجيل الدخول - G STORE</h3>
+        <input type="text" id="username" placeholder="اسم المستخدم">
+        <input type="password" id="password" placeholder="كلمة المرور">
+        <button onclick="login()">دخول</button>
+    </div>
+
+    <!-- لوحة التحكم -->
+    <div class="box hidden" id="admin-box">
+        <h3 id="welcome-msg"></h3>
+        <button onclick="logout()" style="background: #dc3545;">تسجيل الخروج</button>
+        
+        <!-- قسم إضافة موظف (يظهر للمدير فقط) -->
+        <div class="admin-section" id="create-user-section" style="display: none;">
+            <h4>إضافة موظف جديد</h4>
+            <input type="text" id="new-user" placeholder="اسم المستخدم للموظف">
+            <input type="password" id="new-pass" placeholder="كلمة المرور للموظف">
+            <button onclick="addNewUser()">حفظ الموظف في السحابة</button>
         </div>
     </div>
 
-    <!-- لوحة الموظف -->
-    <div id="employee-screen" class="app-screen hidden">
-        <header class="app-header">
-            <div class="user-info">
-                <i class="fa-solid fa-user-tie"></i>
-                <span id="logged-employee-name">المستخدم</span>
-            </div>
-            <h1>نظام مطابقة الصناديق</h1>
-            <button id="logout-btn" class="btn-secondary"><i class="fa-solid fa-right-from-bracket"></i> خروج</button>
-        </header>
+<script>
+    // تم دمج معلومات الاتصال الخاصة بك هنا مسبقاً
+    const SUPABASE_URL = 'https://etztnzuivagqxjahlyqa.supabase.co';
+    const SUPABASE_KEY = 'Sb_publishable_rHRivMdg5__JBuOND0tCKg_CY1Z7sA0';
+    
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        <main class="container">
-            <!-- شاشة بداية الشفت -->
-            <section id="shift-start-section" class="card">
-                <h3><i class="fa-solid fa-clock"></i> بدء الشفت الجديد</h3>
-                <form id="shift-start-form">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>اسم الموظف</label>
-                            <input type="text" id="display-employee-name" readonly class="readonly-input">
-                        </div>
-                        <div class="form-group">
-                            <label for="shift-type">نوع الشفت</label>
-                            <select id="shift-type" required>
-                                <option value="">اختر نوع الشفت</option>
-                                <option value="صباحي">صباحي</option>
-                                <option value="مسائي">مسائي</option>
-                                <option value="ليلي">ليلي</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="opening-cash">النقد المستلم بداية الشفت (دينار)</label>
-                            <input type="number" id="opening-cash" min="0" step="any" required placeholder="0">
-                        </div>
-                    </div>
-                    <button type="submit" class="btn-success"><i class="fa-solid fa-play"></i> بدء الشفت وحفظ</button>
-                </form>
-            </section>
+    // دالة تسجيل الدخول
+    async function login() {
+        let u = document.getElementById('username').value.trim();
+        let p = document.getElementById('password').value.trim();
 
-            <!-- حقول الشفت النشط (تظهر بعد بدء الشفت) -->
-            <div id="active-shift-content" class="hidden">
-                <section class="card">
-                    <h3><i class="fa-solid fa-calculator"></i> حاسبة الحسابات والمعاملات</h3>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="reinforcement">النقد المعزز (المضاف للصندوق)</label>
-                            <input type="number" id="reinforcement" value="0" min="0" step="any">
-                        </div>
-                        <div class="form-group">
-                            <label for="sold-count">عدد المعاملات المباعة (السعر الثابت: 2000)</label>
-                            <input type="number" id="sold-count" value="0" min="0">
-                        </div>
-                        <div class="form-group">
-                            <label>مبلغ المعاملات المباعة</label>
-                            <input type="text" id="sold-amount-display" readonly value="0 دينار" class="readonly-input highlight">
-                        </div>
-                    </div>
+        if (!u || !p) {
+            alert('الرجاء إدخال اسم المستخدم وكلمة المرور');
+            return;
+        }
 
-                    <!-- المباع المتفرق -->
-                    <div class="misc-section">
-                        <label>هل يوجد مباع متفرق؟</label>
-                        <div class="radio-group">
-                            <label><input type="radio" name="has_misc" value="no" checked> لا</label>
-                            <label><input type="radio" name="has_misc" value="yes"> نعم</label>
-                        </div>
-                        <div id="misc-container" class="hidden">
-                            <div class="form-group">
-                                <label for="misc-count">عدد المعاملات المباعة المتفرقة</label>
-                                <input type="number" id="misc-count" min="1" value="0">
-                            </div>
-                            <div id="misc-prices-list" class="prices-grid"></div>
-                            <div class="sub-total">إجمالي المباع المتفرق: <span id="misc-total-display">0</span> دينار</div>
-                        </div>
-                    </div>
+        let { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('username', u)
+            .eq('password', p)
+            .single();
 
-                    <!-- إجمالي المبيعات -->
-                    <div class="total-sales-box">
-                        <h4>إجمالي المبيعات الكلي: <span id="total-sales-display">0</span> دينار</h4>
-                    </div>
+        if (error || !data) {
+            alert('اسم المستخدم أو كلمة المرور غير صحيحة!');
+            return;
+        }
 
-                    <!-- المعاملات غير المباعة -->
-                    <div class="unsold-section">
-                        <h4><i class="fa-solid fa-file-circle-xmark"></i> المعاملات غير المباعة</h4>
-                        <div class="form-group">
-                            <label for="unsold-count">عدد المعاملات غير المباعة</label>
-                            <input type="number" id="unsold-count" min="0" value="0">
-                        </div>
-                        <div id="unsold-records-container"></div>
-                    </div>
+        localStorage.setItem('currentUser', JSON.stringify(data));
+        loadDashboard();
+    }
 
-                    <!-- حساب نهاية الصندوق -->
-                    <div class="ending-cash-box">
-                        <h3><i class="fa-solid fa-wallet"></i> نقد الصندوق نهاية الشفت: <span id="ending-cash-display">0</span> دينار</h3>
-                    </div>
+    // عرض اللوحة حسب الصلاحية
+    function loadDashboard() {
+        let current = JSON.parse(localStorage.getItem('currentUser'));
+        if (!current) return;
 
-                    <div class="actions-row">
-                        <button type="button" id="clear-btn" class="btn-warning"><i class="fa-solid fa-eraser"></i> تفريغ</button>
-                        <button type="button" id="finish-shift-btn" class="btn-danger"><i class="fa-solid fa-flag-checkered"></i> إنهاء الشفت وحفظ التقرير</button>
-                    </div>
-                </section>
-            </div>
-        </main>
-    </div>
+        document.getElementById('login-box').classList.add('hidden');
+        document.getElementById('admin-box').classList.remove('hidden');
+        document.getElementById('welcome-msg').innerText = `مرحباً، ${current.username} (${current.role})`;
 
-    <!-- لوحة تحكم المدير -->
-    <div id="manager-screen" class="app-screen hidden">
-        <header class="app-header manager-header">
-            <div class="user-info">
-                <i class="fa-solid fa-user-shield"></i>
-                <span>لوحة تحكم المدير</span>
-            </div>
-            <h1>إدارة نظام مطابقة الصناديق</h1>
-            <button id="manager-logout-btn" class="btn-secondary"><i class="fa-solid fa-right-from-bracket"></i> خروج</button>
-        </header>
-        <main class="container">
-            <!-- سيتم إضافة محتوى لوحة المدير والتقارير تباعاً -->
-            <div class="card">
-                <h3>جاري تحميل لوحة التحكم...</h3>
-            </div>
-        </main>
-    </div>
+        if (current.role === 'admin') {
+            document.getElementById('create-user-section').style.display = 'block';
+        }
+    }
 
-    <footer class="site-footer">
-        صنع بواسطة غيث
-    </footer>
+    // دالة إضافة موظف جديد بواسطة المدير
+    async function addNewUser() {
+        let nu = document.getElementById('new-user').value.trim();
+        let np = document.getElementById('new-pass').value.trim();
 
-    <!-- ملفات الجافاسكريبت ستضاف هنا لاحقاً -->
-    <script src="app.js"></script>
+        if (!nu || !np) {
+            alert('يرجى ملء كافة الحقول المطلوبة');
+            return;
+        }
+
+        let { error } = await supabase
+            .from('users')
+            .insert([{ username: nu, password: np, role: 'employee' }]);
+
+        if (error) {
+            alert('حدث خطأ أو اسم المستخدم موجود مسبقاً: ' + error.message);
+        } else {
+            alert('تم حفظ الموظف بنجاح! يمكنه الدخول من أي جهاز.');
+            document.getElementById('new-user').value = '';
+            document.getElementById('new-pass').value = '';
+        }
+    }
+
+    // تسجيل الخروج
+    function logout() {
+        localStorage.removeItem('currentUser');
+        location.reload();
+    }
+
+    // التحقق من الجلسة عند فتح الصفحة
+    window.onload = function() {
+        if (localStorage.getItem('currentUser')) {
+            loadDashboard();
+        }
+    }
+</script>
+
 </body>
 </html>
