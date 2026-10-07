@@ -4,8 +4,26 @@ let currentShift = null;
 // قاعدة بيانات المستخدمين المحلية (تُحفظ في المتصفح لكي لا تختفي عند تسجيل الخروج)
 function getStoredUsers() {
     const defaultUsers = [
-        { id: '1', username: 'admin', password: 'admin', full_name: 'المدير العام', role: 'manager', active: true },
-        { id: '2', username: 'employee', password: '1234', full_name: 'أحمد الموظف', role: 'employee', active: true }
+        { id: '1', username: 'admin', password: 'admin', full_name: 'غيث (المدير العام)', role: 'manager', active: true },
+        { id: '2', username: 'jaafar_7842', password: '3891', full_name: 'جعفر', role: 'employee', active: true },
+        { id: '3', username: 'taiba_5129', password: '6420', full_name: 'طيبه', role: 'employee', active: true },
+        { id: '4', username: 'maryam_9304', password: '1583', full_name: 'مريم', role: 'employee', active: true },
+        { id: '5', username: 'aya_2615', password: '7924', full_name: 'ايه', role: 'employee', active: true },
+        { id: '6', username: 'saja_8431', password: '2065', full_name: 'سجى', role: 'employee', active: true },
+        { id: '7', username: 'ali_ahmad_6392', password: '4178', full_name: 'علي احمد', role: 'employee', active: true },
+        { id: '8', username: 'ali_salam_1478', password: '9352', full_name: 'علي سلام', role: 'employee', active: true },
+        { id: '9', username: 'ammar_3920', password: '5814', full_name: 'عمار', role: 'employee', active: true },
+        { id: '10', username: 'bilal_7563', password: '2491', full_name: 'بلال', role: 'employee', active: true },
+        { id: '11', username: 'mohammad_2841', password: '6037', full_name: 'محمد', role: 'employee', active: true },
+        { id: '12', username: 'marwan_9156', password: '4820', full_name: 'مروان', role: 'employee', active: true },
+        { id: '13', username: 'fahd_3209', password: '7153', full_name: 'فهد', role: 'employee', active: true },
+        { id: '14', username: 'ahmad_saadi_6841', password: '1946', full_name: 'احمد سعدي', role: 'employee', active: true },
+        { id: '15', username: 'ahmad_ziyad_5293', password: '8321', full_name: 'احمد زياد', role: 'employee', active: true },
+        { id: '16', username: 'omar_4172', password: '5690', full_name: 'عمر', role: 'employee', active: true },
+        { id: '17', username: 'omar_hafez_8305', password: '2748', full_name: 'عمر حافظ', role: 'employee', active: true },
+        { id: '18', username: 'ibrahim_1924', password: '6489', full_name: 'ابراهيم', role: 'employee', active: true },
+        { id: '19', username: 'mohammad_firas_7462', password: '3150', full_name: 'محمد فراس', role: 'employee', active: true },
+        { id: '20', username: 'employee_1_5093', password: '9824', full_name: 'موضف ١', role: 'employee', active: true }
     ];
     const stored = localStorage.getItem('gstore_users');
     return stored ? JSON.parse(stored) : defaultUsers;
@@ -171,7 +189,6 @@ function calculateEmployeeTotals() {
     const reinforcement = parseFloat(document.getElementById('reinforcement').value) || 0;
     const soldCount = parseInt(document.getElementById('sold-count').value) || 0;
 
-    // تم التعديل: الضرب في 2000 بناءً على طلبك
     const soldAmount = soldCount * 2000; 
     document.getElementById('sold-amount-display').value = soldAmount.toFixed(2) + ' $';
 
@@ -196,7 +213,7 @@ function saveAndFinishShift() {
     const openingCash = parseFloat(document.getElementById('opening-cash').value) || 0;
     const reinforcement = parseFloat(document.getElementById('reinforcement').value) || 0;
     const soldCount = parseInt(document.getElementById('sold-count').value) || 0;
-    const soldAmount = soldCount * 2000; // الضرب في 2000
+    const soldAmount = soldCount * 2000;
     
     let miscTotal = 0;
     document.querySelectorAll('.misc-price-input').forEach(input => {
@@ -217,8 +234,6 @@ function saveAndFinishShift() {
 
     const totalSales = soldAmount + miscTotal;
     const endingCash = openingCash + reinforcement - totalSales;
-    
-    // وقت النهاية تلقائياً
     const endTime = new Date().toISOString();
 
     const shiftData = {
@@ -372,142 +387,4 @@ function loadManagerDashboard() {
         }
         if (!confirm('هل أنت متأكد من تعديل نقد القاصة؟')) return;
         localStorage.setItem('gstore_vault', val);
-        alert('تم تحديث نقد القاصة بنجاح!');
-        loadManagerDashboard();
-    });
-
-    const addUserBtn = document.getElementById('show-add-user-btn');
-    const addUserSection = document.getElementById('add-user-section');
-    document.getElementById('cancel-add-user').addEventListener('click', () => {
-        addUserSection.classList.add('hidden');
-        addUserBtn.classList.remove('hidden');
-    });
-    addUserBtn.addEventListener('click', () => {
-        addUserSection.classList.remove('hidden');
-        addUserBtn.classList.add('hidden');
-    });
-
-    document.getElementById('add-user-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const fullName = document.getElementById('new-fullname').value.trim();
-        const username = document.getElementById('new-username').value.trim();
-        const password = document.getElementById('new-password').value.trim();
-        const role = document.getElementById('new-role').value;
-
-        let users = getStoredUsers();
-        if (users.some(u => u.username === username)) {
-            alert('اسم المستخدم موجود مسبقاً، يختار اسم آخر.');
-            return;
-        }
-
-        users.push({ id: Date.now().toString(), username, password, full_name: fullName, role, active: true });
-        saveUsers(users);
-        alert('تم إضافة المستخدم بنجاح!');
-        document.getElementById('add-user-form').reset();
-        addUserSection.classList.add('hidden');
-        addUserBtn.classList.remove('hidden');
-        renderUsersTable();
-        populateEmployeeFilter();
-    });
-
-    document.getElementById('apply-filter-btn').addEventListener('click', () => {
-        const selectedEmp = document.getElementById('filter-employee').value;
-        renderShiftsTable(selectedEmp);
-    });
-
-    renderUsersTable();
-    populateEmployeeFilter();
-    renderShiftsTable('all');
-}
-
-function renderUsersTable() {
-    const container = document.getElementById('users-table-container');
-    if (!container) return;
-
-    const users = getStoredUsers();
-    let html = `<table style="width: 100%; border-collapse: collapse; text-align: right;">
-        <thead><tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;"><th style="padding: 10px;">الاسم الكامل</th><th style="padding: 10px;">اسم المستخدم</th><th style="padding: 10px;">الصلاحية</th><th style="padding: 10px;">الحالة</th><th style="padding: 10px; text-align: center;">إجراءات</th></tr></thead><tbody>`;
-
-    users.forEach(u => {
-        html += `<tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 10px;">${u.full_name}</td>
-            <td style="padding: 10px;">${u.username}</td>
-            <td style="padding: 10px;">${u.role === 'manager' ? 'مدير' : 'موظف'}</td>
-            <td style="padding: 10px;">${u.active ? '<span style="color:green; font-weight:bold;">مفعل</span>' : '<span style="color:red; font-weight:bold;">معطل</span>'}</td>
-            <td style="padding: 10px; text-align: center;">
-                <button onclick="toggleUserStatus('${u.id}')" class="btn-${u.active ? 'danger' : 'success'}" style="padding: 5px 10px; font-size: 12px; width: auto;">${u.active ? 'تعطيل' : 'تفعيل'}</button>
-            </td>
-        </tr>`;
-    });
-    html += `</tbody></table>`;
-    container.innerHTML = html;
-}
-
-window.toggleUserStatus = function(id) {
-    let users = getStoredUsers();
-    const u = users.find(user => user.id === id);
-    if (u) {
-        if (u.username === 'admin') {
-            alert('لا يمكن تغيير حالة المدير الرئيسي!');
-            return;
-        }
-        u.active = !u.active;
-        saveUsers(users);
-        renderUsersTable();
-    }
-};
-
-function populateEmployeeFilter() {
-    const select = document.getElementById('filter-employee');
-    if (!select) return;
-
-    const users = getStoredUsers();
-    select.innerHTML = `<option value="all">كل الموظفين (كشف كلي)</option>`;
-    users.forEach(u => {
-        select.innerHTML += `<option value="${u.full_name}">${u.full_name}</option>`;
-    });
-}
-
-function renderShiftsTable(filterEmployee = 'all') {
-    const container = document.getElementById('shifts-table-container');
-    if (!container) return;
-
-    let savedShifts = JSON.parse(localStorage.getItem('gstore_shifts') || '[]');
-
-    if (filterEmployee !== 'all') {
-        savedShifts = savedShifts.filter(s => s.employee_name === filterEmployee);
-    }
-
-    if (!savedShifts.length) {
-        container.innerHTML = `<p>لا توجد شفتات مسجلة تطابق هذا الاختيار.</p>`;
-        return;
-    }
-
-    let html = `<table style="width: 100%; border-collapse: collapse; text-align: right;">
-        <thead><tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;"><th style="padding: 10px;">الموظف</th><th style="padding: 10px;">نوع الشفت</th><th style="padding: 10px;">وقت البدء والانتهاء</th><th style="padding: 10px;">المباع الكلي</th><th style="padding: 10px;">صندوق النهاية</th><th style="padding: 10px; text-align: center;">التحكم</th></tr></thead><tbody>`;
-
-    savedShifts.forEach((s, index) => {
-        html += `<tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 10px;">${s.employee_name}</td>
-            <td style="padding: 10px;">${s.shift_type}</td>
-            <td style="padding: 10px; font-size: 12px; color: #555;">بدء: ${new Date(s.start_time).toLocaleTimeString()}<br>انتهاء: ${new Date(s.end_time).toLocaleTimeString()}</td>
-            <td style="padding: 10px; color: green; font-weight: bold;">${s.total_sales} $</td>
-            <td style="padding: 10px;">${s.ending_cash} $</td>
-            <td style="padding: 10px; text-align: center;">
-                <button onclick='printShiftReceipt(${JSON.stringify(s)})' class="btn-primary" style="padding: 5px 10px; font-size: 12px; width: auto;">طباعة</button>
-                <button onclick="deleteShift(${index})" class="btn-danger" style="padding: 5px 10px; font-size: 12px; width: auto; background: #991b1b; margin-right: 5px;">حذف</button>
-            </td>
-        </tr>`;
-    });
-    html += `</tbody></table>`;
-    container.innerHTML = html;
-}
-
-window.deleteShift = function(index) {
-    if (!confirm('هل أنت متأكد من حذف تقرير الشفت؟')) return;
-    let savedShifts = JSON.parse(localStorage.getItem('gstore_shifts') || '[]');
-    savedShifts.splice(index, 1);
-    localStorage.setItem('gstore_shifts', JSON.stringify(savedShifts));
-    const currentFilter = document.getElementById('filter-employee') ? document.getElementById('filter-employee').value : 'all';
-    renderShiftsTable(currentFilter);
-};
+        alert('تم تحديث نقد القاصة 
