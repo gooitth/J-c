@@ -1,15 +1,13 @@
-const SUPABASE_URL = 'https://etztnzuivagqxjahlyqa.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_rHRivMdg5__JBuOND0tCKg_CY1Z7sA0';
-
-let sbClient = null;
 let currentUser = null;
 let currentShift = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    if (window.supabase) {
-        sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    }
+// قاعدة بيانات محلية مؤقتة للمستخدمين لضمان عدم حدوث أي عطل بالاتصال
+const localUsers = [
+    { id: '1', username: 'admin', password: 'admin', full_name: 'المدير العام', role: 'manager', active: true },
+    { id: '2', username: 'employee', password: '1234', full_name: 'أحمد الموظف', role: 'employee', active: true }
+];
 
+document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
         loginForm.addEventListener('submit', handleLogin);
@@ -23,68 +21,40 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEmployeeShiftEvents();
 });
 
-// تسجيل الدخول مع معالجة الأخطاء
-async function handleLogin(e) {
+// تسجيل الدخول
+function handleLogin(e) {
     e.preventDefault();
     const usernameInput = document.getElementById('username').value.trim();
     const passwordInput = document.getElementById('password').value.trim();
     const errorMsg = document.getElementById('login-error');
 
     errorMsg.classList.add('hidden');
-    errorMsg.textContent = 'خطأ في اسم المستخدم أو كلمة المرور';
 
-    try {
-        if (sbClient) {
-            const { data, error } = await sbClient
-                .from('profiles')
-                .select('*')
-                .eq('username', usernameInput)
-                .single();
+    // البحث عن المستخدم
+    const foundUser = localUsers.find(u => u.username === usernameInput && u.password === passwordInput);
 
-            if (error || !data) {
-                errorMsg.textContent = 'المستخدم غير موجود!';
-                errorMsg.classList.remove('hidden');
-                return;
-            }
-
-            if (!data.active) {
-                errorMsg.textContent = 'هذا الحساب معطل من قبل المدير!';
-                errorMsg.classList.remove('hidden');
-                return;
-            }
-
-            if (data.password !== passwordInput) {
-                errorMsg.textContent = 'كلمة المرور غير صحيحة!';
-                errorMsg.classList.remove('hidden');
-                return;
-            }
-
-            currentUser = data;
-        } else {
-            if (usernameInput === 'admin' && passwordInput === 'admin') {
-                currentUser = { id: 'admin-id', full_name: 'المدير العام', role: 'manager', active: true };
-            } else if (usernameInput === 'employee' && passwordInput === '1234') {
-                currentUser = { id: 'emp-id', full_name: 'أحمد الموظف', role: 'employee', active: true };
-            } else {
-                errorMsg.classList.remove('hidden');
-                return;
-            }
-        }
-
-        document.getElementById('login-screen').classList.add('hidden');
-
-        if (currentUser.role === 'manager') {
-            document.getElementById('manager-screen').classList.remove('hidden');
-            loadManagerDashboard();
-        } else {
-            document.getElementById('employee-screen').classList.remove('hidden');
-            document.getElementById('logged-employee-name').textContent = currentUser.full_name;
-            document.getElementById('display-employee-name').value = currentUser.full_name;
-        }
-    } catch (err) {
-        console.error(err);
-        errorMsg.textContent = 'حدث خطأ في الاتصال بقاعدة البيانات.';
+    if (!foundUser) {
+        errorMsg.textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة!';
         errorMsg.classList.remove('hidden');
+        return;
+    }
+
+    if (!foundUser.active) {
+        errorMsg.textContent = 'هذا الحساب معطل!';
+        errorMsg.classList.remove('hidden');
+        return;
+    }
+
+    currentUser = foundUser;
+    document.getElementById('login-screen').classList.add('hidden');
+
+    if (currentUser.role === 'manager') {
+        document.getElementById('manager-screen').classList.remove('hidden');
+        loadManagerDashboard();
+    } else {
+        document.getElementById('employee-screen').classList.remove('hidden');
+        document.getElementById('logged-employee-name').textContent = currentUser.full_name;
+        document.getElementById('display-employee-name').value = currentUser.full_name;
     }
 }
 
@@ -210,7 +180,7 @@ function calculateEmployeeTotals() {
     endingCashDisplay.style.color = endingCash < 0 ? 'var(--danger-color)' : 'var(--success-color)';
 }
 
-async function saveAndFinishShift() {
+function saveAndFinishShift() {
     if (!confirm('هل أنت متأكد من حفظ وإنهاء الشفت؟')) return;
 
     const openingCash = parseFloat(document.getElementById('opening-cash').value) || 0;
@@ -252,38 +222,22 @@ async function saveAndFinishShift() {
         total_sales: totalSales,
         ending_cash: endingCash,
         start_time: currentShift.start_time,
-        end_time: endTime
+        end_time: endTime,
+        created_at: new Date().toISOString()
     };
 
-    try {
-        if (sbClient) {
-            const { error } = await sbClient.from('shifts').insert([shiftData]);
-            if (error) throw error;
-            await addAmountToVault(totalSales);
-        }
+    // حفظ محلي في المتصفح حتى لا يضيع أي تقرير
+    let savedShifts = JSON.parse(localStorage.getItem('gstore_shifts') || '[]');
+    savedShifts.unshift(shiftData);
+    localStorage.setItem('gstore_shifts', JSON.stringify(savedShifts));
 
-        alert('تم حفظ الشفت وإنهاؤه بنجاح وتحديث نقد القاصة!');
-        printShiftReceipt(shiftData);
-        window.location.reload();
-    } catch (err) {
-        console.error(err);
-        alert('حدث خطأ أثناء حفظ الشفت.');
-    }
-}
+    // تحديث القاصة محلياً
+    let currentVault = parseFloat(localStorage.getItem('gstore_vault') || '1000');
+    localStorage.setItem('gstore_vault', currentVault + totalSales);
 
-async function addAmountToVault(amountToAdd) {
-    if (!sbClient) return;
-    try {
-        const { data, error } = await sbClient.from('vault_cash').select('amount').eq('id', 1).single();
-        if (error) throw error;
-        
-        const currentVault = parseFloat(data.amount) || 0;
-        const newVaultAmount = currentVault + amountToAdd;
-
-        await sbClient.from('vault_cash').update({ amount: newVaultAmount, updated_at: new Date().toISOString() }).eq('id', 1);
-    } catch (err) {
-        console.error('Error updating vault:', err);
-    }
+    alert('تم حفظ الشفت وإنهاؤه بنجاح وتحديث القاصة!');
+    printShiftReceipt(shiftData);
+    window.location.reload();
 }
 
 function printShiftReceipt(data) {
@@ -312,7 +266,7 @@ function printShiftReceipt(data) {
             <div class="box">
                 <p><strong>النقد المستلم (بداية اليوم):</strong> ${data.opening_cash} $</p>
                 <p><strong>المبلغ المعزز:</strong> ${data.reinforcement} $</p>
-                <p><strong>المعاملات المباعة (سكنر):</strong> ${data.sold_count} (المبلغ: ${data.sold_amount} $)</p>
+                <p><strong>المعاملات المباعة:</strong> ${data.sold_count} (المبلغ: ${data.sold_amount} $)</p>
                 <p><strong>مجموع المعاملات المتفرقة:</strong> ${data.misc_total} $</p>
                 <p><strong>المباع الكلي:</strong> ${data.total_sales} $</p>
                 <p><strong>نقد الصندوق (نهاية اليوم):</strong> ${data.ending_cash} $</p>
@@ -332,15 +286,16 @@ function printShiftReceipt(data) {
 // ---------------------------------------------------------------------------
 // لوحة تحكم المدير
 // ---------------------------------------------------------------------------
-async function loadManagerDashboard() {
+function loadManagerDashboard() {
     const managerMainContainer = document.querySelector('#manager-screen .container');
+    const currentVault = parseFloat(localStorage.getItem('gstore_vault') || '1000').toFixed(2);
     
     managerMainContainer.innerHTML = `
         <div class="card" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: white;">
             <h3><i class="fa-solid fa-vault"></i> نقد القاصة المركزية (خاص بالمدير فقط)</h3>
             <p style="color: #94a3b8; font-size: 14px; margin-bottom: 15px;">المبلغ الكلي المتراكم في القاصة بالدولار الأمريكي.</p>
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                <h1 id="vault-amount-display" style="color: #38bdf8; margin: 0; font-size: 32px;">0.00 $</h1>
+                <h1 id="vault-amount-display" style="color: #38bdf8; margin: 0; font-size: 32px;">${currentVault} $</h1>
                 <div style="display: flex; gap: 10px;">
                     <input type="number" step="0.01" id="new-vault-input" placeholder="تعديل المبلغ..." style="padding: 8px; border-radius: 8px; border: none; width: 150px;">
                     <button type="button" id="update-vault-btn" class="btn-success" style="width: auto;"><i class="fa-solid fa-pen"></i> تحديث القاصة</button>
@@ -376,17 +331,27 @@ async function loadManagerDashboard() {
 
         <div class="card">
             <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-users-gear"></i> إدارة المستخدمين والموظفين</h3>
-            <div id="users-table-container" style="overflow-x: auto;"><p>جاري التحميل...</p></div>
+            <div id="users-table-container" style="overflow-x: auto;"></div>
         </div>
 
         <div class="card">
             <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-clipboard-list"></i> سجل الشفتات والأيام لكل موظف</h3>
-            <div id="shifts-table-container" style="overflow-x: auto;"><p>جاري تحميل الشفتات...</p></div>
+            <div id="shifts-table-container" style="overflow-x: auto;"></div>
         </div>
     `;
 
     document.getElementById('refresh-manager-btn').addEventListener('click', loadManagerDashboard);
-    document.getElementById('update-vault-btn').addEventListener('click', updateVaultCashDirectly);
+    document.getElementById('update-vault-btn').addEventListener('click', () => {
+        const val = parseFloat(document.getElementById('new-vault-input').value);
+        if (isNaN(val)) {
+            alert('يرجى إدخال مبلغ صحيح');
+            return;
+        }
+        if (!confirm('هل أنت متأكد من تعديل نقد القاصة؟')) return;
+        localStorage.setItem('gstore_vault', val);
+        alert('تم تحديث نقد القاصة بنجاح!');
+        loadManagerDashboard();
+    });
 
     const addUserBtn = document.getElementById('show-add-user-btn');
     const addUserSection = document.getElementById('add-user-section');
@@ -399,169 +364,93 @@ async function loadManagerDashboard() {
         addUserBtn.classList.add('hidden');
     });
 
-    document.getElementById('add-user-form').addEventListener('submit', handleAddNewUser);
+    document.getElementById('add-user-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const fullName = document.getElementById('new-fullname').value.trim();
+        const username = document.getElementById('new-username').value.trim();
+        const password = document.getElementById('new-password').value.trim();
+        const role = document.getElementById('new-role').value;
 
-    await fetchVaultCash();
-    await fetchAndRenderUsers();
-    await fetchAndRenderShifts();
-}
-
-async function fetchVaultCash() {
-    if (!sbClient) return;
-    try {
-        const { data, error } = await sbClient.from('vault_cash').select('amount').eq('id', 1).single();
-        if (error) throw error;
-        document.getElementById('vault-amount-display').textContent = (parseFloat(data.amount) || 0).toFixed(2) + ' $';
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-async function updateVaultCashDirectly() {
-    const val = parseFloat(document.getElementById('new-vault-input').value);
-    if (isNaN(val)) {
-        alert('يرجى إدخال مبلغ صحيح');
-        return;
-    }
-    if (!confirm('هل أنت متأكد من تعديل نقد القاصة؟')) return;
-
-    try {
-        const { error } = await sbClient.from('vault_cash').update({ amount: val, updated_at: new Date().toISOString() }).eq('id', 1);
-        if (error) throw error;
-        alert('تم تحديث نقد القاصة بنجاح!');
-        document.getElementById('new-vault-input').value = '';
-        await fetchVaultCash();
-    } catch (err) {
-        console.error(err);
-        alert('حدث خطأ أثناء تحديث القاصة.');
-    }
-}
-
-async function fetchAndRenderUsers() {
-    const container = document.getElementById('users-table-container');
-    try {
-        const { data, error } = await sbClient.from('profiles').select('*').order('created_at', { ascending: false });
-        if (error) throw error;
-
-        if (!data.length) {
-            container.innerHTML = `<p>لا يوجد مستخدمون.</p>`;
-            return;
-        }
-
-        let html = `<table style="width: 100%; border-collapse: collapse; text-align: right;">
-            <thead><tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;"><th style="padding: 10px;">الاسم الكامل</th><th style="padding: 10px;">اسم المستخدم</th><th style="padding: 10px;">الصلاحية</th><th style="padding: 10px;">الحالة</th><th style="padding: 10px; text-align: center;">إجراءات</th></tr></thead><tbody>`;
-
-        data.forEach(u => {
-            html += `<tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 10px;">${u.full_name}</td>
-                <td style="padding: 10px;">${u.username}</td>
-                <td style="padding: 10px;">${u.role === 'manager' ? 'مدير' : 'موظف'}</td>
-                <td style="padding: 10px;">${u.active ? '<span style="color:green; font-weight:bold;">مفعل</span>' : '<span style="color:red; font-weight:bold;">معطل</span>'}</td>
-                <td style="padding: 10px; text-align: center;">
-                    <button onclick="toggleUserStatus('${u.id}', ${!u.active})" class="btn-${u.active ? 'danger' : 'success'}" style="padding: 5px 10px; font-size: 12px; width: auto;">${u.active ? 'تعطيل' : 'تفعيل'}</button>
-                    <button onclick="deleteSystemUser('${u.id}', '${u.username}')" class="btn-danger" style="padding: 5px 10px; font-size: 12px; width: auto; background: #991b1b; margin-right: 5px;">حذف</button>
-                </td>
-            </tr>`;
-        });
-        html += `</tbody></table>`;
-        container.innerHTML = html;
-    } catch (err) {
-        console.error(err);
-        container.innerHTML = `<p style="color: red;">خطأ في جلب المستخدمين.</p>`;
-    }
-}
-
-async function fetchAndRenderShifts() {
-    const container = document.getElementById('shifts-table-container');
-    try {
-        const { data, error } = await sbClient.from('shifts').select('*').order('created_at', { ascending: false });
-        if (error) throw error;
-
-        if (!data.length) {
-            container.innerHTML = `<p>لا توجد شفتات مسجلة حتى الآن.</p>`;
-            return;
-        }
-
-        let html = `<table style="width: 100%; border-collapse: collapse; text-align: right;">
-            <thead><tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;"><th style="padding: 10px;">الموظف</th><th style="padding: 10px;">نوع الشفت</th><th style="padding: 10px;">المباع الكلي</th><th style="padding: 10px;">صندوق النهاية</th><th style="padding: 10px;">التاريخ والوقت</th><th style="padding: 10px; text-align: center;">التحكم</th></tr></thead><tbody>`;
-
-        data.forEach(s => {
-            html += `<tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 10px;">${s.employee_name}</td>
-                <td style="padding: 10px;">${s.shift_type}</td>
-                <td style="padding: 10px; color: green; font-weight: bold;">${s.total_sales} $</td>
-                <td style="padding: 10px;">${s.ending_cash} $</td>
-                <td style="padding: 10px;">${new Date(s.created_at).toLocaleString()}</td>
-                <td style="padding: 10px; text-align: center;">
-                    <button onclick='printShiftReceipt(${JSON.stringify(s)})' class="btn-primary" style="padding: 5px 10px; font-size: 12px; width: auto;">طباعة</button>
-                    <button onclick="deleteShift('${s.id}')" class="btn-danger" style="padding: 5px 10px; font-size: 12px; width: auto; background: #991b1b; margin-right: 5px;">حذف</button>
-                </td>
-            </tr>`;
-        });
-        html += `</tbody></table>`;
-        container.innerHTML = html;
-    } catch (err) {
-        console.error(err);
-        container.innerHTML = `<p style="color: red;">خطأ في جلب الشفتات.</p>`;
-    }
-}
-
-async function handleAddNewUser(e) {
-    e.preventDefault();
-    const fullName = document.getElementById('new-fullname').value.trim();
-    const username = document.getElementById('new-username').value.trim();
-    const password = document.getElementById('new-password').value.trim();
-    const role = document.getElementById('new-role').value;
-
-    try {
-        const { error } = await sbClient.from('profiles').insert([{ full_name: fullName, username: username, password: password, role: role, active: true }]);
-        if (error) throw error;
+        localUsers.push({ id: Date.now().toString(), username, password, full_name: fullName, role, active: true });
         alert('تم إضافة المستخدم بنجاح!');
         document.getElementById('add-user-form').reset();
-        document.getElementById('add-user-section').classList.add('hidden');
-        document.getElementById('show-add-user-btn').classList.remove('hidden');
-        await fetchAndRenderUsers();
-    } catch (err) {
-        console.error(err);
-        alert('خطأ أثناء إضافة المستخدم (اسم المستخدم قد يكون مستخدماً).');
-    }
+        addUserSection.classList.add('hidden');
+        addUserBtn.classList.remove('hidden');
+        renderUsersTable();
+    });
+
+    renderUsersTable();
+    renderShiftsTable();
 }
 
-async function toggleUserStatus(userId, newStatus) {
-    if (!confirm('هل أنت متأكد من تغيير حالة المستخدم؟')) return;
-    try {
-        const { error } = await sbClient.from('profiles').update({ active: newStatus }).eq('id', userId);
-        if (error) throw error;
-        await fetchAndRenderUsers();
-    } catch (err) {
-        console.error(err);
-    }
+function renderUsersTable() {
+    const container = document.getElementById('users-table-container');
+    if (!container) return;
+
+    let html = `<table style="width: 100%; border-collapse: collapse; text-align: right;">
+        <thead><tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;"><th style="padding: 10px;">الاسم الكامل</th><th style="padding: 10px;">اسم المستخدم</th><th style="padding: 10px;">الصلاحية</th><th style="padding: 10px;">الحالة</th><th style="padding: 10px; text-align: center;">إجراءات</th></tr></thead><tbody>`;
+
+    localUsers.forEach(u => {
+        html += `<tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 10px;">${u.full_name}</td>
+            <td style="padding: 10px;">${u.username}</td>
+            <td style="padding: 10px;">${u.role === 'manager' ? 'مدير' : 'موظف'}</td>
+            <td style="padding: 10px;">${u.active ? '<span style="color:green; font-weight:bold;">مفعل</span>' : '<span style="color:red; font-weight:bold;">معطل</span>'}</td>
+            <td style="padding: 10px; text-align: center;">
+                <button onclick="toggleUserStatus('${u.id}')" class="btn-${u.active ? 'danger' : 'success'}" style="padding: 5px 10px; font-size: 12px; width: auto;">${u.active ? 'تعطيل' : 'تفعيل'}</button>
+            </td>
+        </tr>`;
+    });
+    html += `</tbody></table>`;
+    container.innerHTML = html;
 }
 
-async function deleteSystemUser(userId, username) {
-    if (username === 'admin') {
-        alert('لا يمكن حذف حساب المدير الرئيسي!');
+window.toggleUserStatus = function(id) {
+    const u = localUsers.find(user => user.id === id);
+    if (u) {
+        if (u.username === 'admin') {
+            alert('لا يمكن تغيير حالة المدير الرئيسي!');
+            return;
+        }
+        u.active = !u.active;
+        renderUsersTable();
+    }
+};
+
+function renderShiftsTable() {
+    const container = document.getElementById('shifts-table-container');
+    if (!container) return;
+
+    const savedShifts = JSON.parse(localStorage.getItem('gstore_shifts') || '[]');
+    if (!savedShifts.length) {
+        container.innerHTML = `<p>لا توجد شفتات مسجلة حتى الآن.</p>`;
         return;
     }
-    if (!confirm(`هل أنت متأكد من حذف المستخدم (${username})؟`)) return;
-    try {
-        const { error } = await sbClient.from('profiles').delete().eq('id', userId);
-        if (error) throw error;
-        await fetchAndRenderUsers();
-    } catch (err) {
-        console.error(err);
-    }
+
+    let html = `<table style="width: 100%; border-collapse: collapse; text-align: right;">
+        <thead><tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;"><th style="padding: 10px;">الموظف</th><th style="padding: 10px;">نوع الشفت</th><th style="padding: 10px;">المباع الكلي</th><th style="padding: 10px;">صندوق النهاية</th><th style="padding: 10px;">التاريخ والوقت</th><th style="padding: 10px; text-align: center;">التحكم</th></tr></thead><tbody>`;
+
+    savedShifts.forEach((s, index) => {
+        html += `<tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 10px;">${s.employee_name}</td>
+            <td style="padding: 10px;">${s.shift_type}</td>
+            <td style="padding: 10px; color: green; font-weight: bold;">${s.total_sales} $</td>
+            <td style="padding: 10px;">${s.ending_cash} $</td>
+            <td style="padding: 10px;">${new Date(s.created_at).toLocaleString()}</td>
+            <td style="padding: 10px; text-align: center;">
+                <button onclick='printShiftReceipt(${JSON.stringify(s)})' class="btn-primary" style="padding: 5px 10px; font-size: 12px; width: auto;">طباعة</button>
+                <button onclick="deleteShift(${index})" class="btn-danger" style="padding: 5px 10px; font-size: 12px; width: auto; background: #991b1b; margin-right: 5px;">حذف</button>
+            </td>
+        </tr>`;
+    });
+    html += `</tbody></table>`;
+    container.innerHTML = html;
 }
 
-async function deleteShift(shiftId) {
-    if (!confirm('هل أنت متأكد من حذف تقرير الشفت هذا؟')) return;
-    try {
-        const { error } = await sbClient.from('shifts').delete().eq('id', shiftId);
-        if (error) throw error;
-        alert('تم حذف التقرير بنجاح.');
-        await fetchAndRenderShifts();
-    } catch (err) {
-        console.error(err);
-        alert('خطأ أثناء الحذف.');
-    }
-}
+window.deleteShift = function(index) {
+    if (!confirm('هل أنت متأكد من حذف تقرير الشفت؟')) return;
+    let savedShifts = JSON.parse(localStorage.getItem('gstore_shifts') || '[]');
+    savedShifts.splice(index, 1);
+    localStorage.setItem('gstore_shifts', JSON.stringify(savedShifts));
+    renderShiftsTable();
+};
