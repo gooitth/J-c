@@ -1,1 +1,167 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام مطابقة الصناديق والمعاملات</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- مكتبة خطوط وأيقونات Google Fonts & FontAwesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
 
+    <!-- شاشة تسجيل الدخول -->
+    <div id="login-screen" class="auth-container">
+        <div class="auth-card">
+            <div class="logo-area">
+                <i class="fa-solid fa-cash-register"></i>
+                <h2>نظام مطابقة الصناديق</h2>
+                <p>تسجيل الدخول إلى النظام</p>
+            </div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username"><i class="fa-solid fa-user"></i> اسم المستخدم</label>
+                    <input type="text" id="username" required placeholder="أدخل اسم المستخدم">
+                </div>
+                <div class="form-group">
+                    <label for="password"><i class="fa-solid fa-lock"></i> كلمة المرور</label>
+                    <input type="password" id="password" required placeholder="أدخل كلمة المرور">
+                </div>
+                <button type="submit" class="btn-primary">دخول <i class="fa-solid fa-arrow-right-to-bracket"></i></button>
+                <div id="login-error" class="error-msg hidden">اسم المستخدم أو كلمة المرور غير صحيحة</div>
+            </form>
+        </div>
+    </div>
+
+    <!-- لوحة الموظف -->
+    <div id="employee-screen" class="app-screen hidden">
+        <header class="app-header">
+            <div class="user-info">
+                <i class="fa-solid fa-user-tie"></i>
+                <span id="logged-employee-name">المستخدم</span>
+            </div>
+            <h1>نظام مطابقة الصناديق</h1>
+            <button id="logout-btn" class="btn-secondary"><i class="fa-solid fa-right-from-bracket"></i> خروج</button>
+        </header>
+
+        <main class="container">
+            <!-- شاشة بداية الشفت -->
+            <section id="shift-start-section" class="card">
+                <h3><i class="fa-solid fa-clock"></i> بدء الشفت الجديد</h3>
+                <form id="shift-start-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>اسم الموظف</label>
+                            <input type="text" id="display-employee-name" readonly class="readonly-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="shift-type">نوع الشفت</label>
+                            <select id="shift-type" required>
+                                <option value="">اختر نوع الشفت</option>
+                                <option value="صباحي">صباحي</option>
+                                <option value="مسائي">مسائي</option>
+                                <option value="ليلي">ليلي</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="opening-cash">النقد المستلم بداية الشفت (دينار)</label>
+                            <input type="number" id="opening-cash" min="0" step="any" required placeholder="0">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-success"><i class="fa-solid fa-play"></i> بدء الشفت وحفظ</button>
+                </form>
+            </section>
+
+            <!-- حقول الشفت النشط (تظهر بعد بدء الشفت) -->
+            <div id="active-shift-content" class="hidden">
+                <section class="card">
+                    <h3><i class="fa-solid fa-calculator"></i> حاسبة الحسابات والمعاملات</h3>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="reinforcement">النقد المعزز (المضاف للصندوق)</label>
+                            <input type="number" id="reinforcement" value="0" min="0" step="any">
+                        </div>
+                        <div class="form-group">
+                            <label for="sold-count">عدد المعاملات المباعة (السعر الثابت: 2000)</label>
+                            <input type="number" id="sold-count" value="0" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>مبلغ المعاملات المباعة</label>
+                            <input type="text" id="sold-amount-display" readonly value="0 دينار" class="readonly-input highlight">
+                        </div>
+                    </div>
+
+                    <!-- المباع المتفرق -->
+                    <div class="misc-section">
+                        <label>هل يوجد مباع متفرق؟</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="has_misc" value="no" checked> لا</label>
+                            <label><input type="radio" name="has_misc" value="yes"> نعم</label>
+                        </div>
+                        <div id="misc-container" class="hidden">
+                            <div class="form-group">
+                                <label for="misc-count">عدد المعاملات المباعة المتفرقة</label>
+                                <input type="number" id="misc-count" min="1" value="0">
+                            </div>
+                            <div id="misc-prices-list" class="prices-grid"></div>
+                            <div class="sub-total">إجمالي المباع المتفرق: <span id="misc-total-display">0</span> دينار</div>
+                        </div>
+                    </div>
+
+                    <!-- إجمالي المبيعات -->
+                    <div class="total-sales-box">
+                        <h4>إجمالي المبيعات الكلي: <span id="total-sales-display">0</span> دينار</h4>
+                    </div>
+
+                    <!-- المعاملات غير المباعة -->
+                    <div class="unsold-section">
+                        <h4><i class="fa-solid fa-file-circle-xmark"></i> المعاملات غير المباعة</h4>
+                        <div class="form-group">
+                            <label for="unsold-count">عدد المعاملات غير المباعة</label>
+                            <input type="number" id="unsold-count" min="0" value="0">
+                        </div>
+                        <div id="unsold-records-container"></div>
+                    </div>
+
+                    <!-- حساب نهاية الصندوق -->
+                    <div class="ending-cash-box">
+                        <h3><i class="fa-solid fa-wallet"></i> نقد الصندوق نهاية الشفت: <span id="ending-cash-display">0</span> دينار</h3>
+                    </div>
+
+                    <div class="actions-row">
+                        <button type="button" id="clear-btn" class="btn-warning"><i class="fa-solid fa-eraser"></i> تفريغ</button>
+                        <button type="button" id="finish-shift-btn" class="btn-danger"><i class="fa-solid fa-flag-checkered"></i> إنهاء الشفت وحفظ التقرير</button>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- لوحة تحكم المدير -->
+    <div id="manager-screen" class="app-screen hidden">
+        <header class="app-header manager-header">
+            <div class="user-info">
+                <i class="fa-solid fa-user-shield"></i>
+                <span>لوحة تحكم المدير</span>
+            </div>
+            <h1>إدارة نظام مطابقة الصناديق</h1>
+            <button id="manager-logout-btn" class="btn-secondary"><i class="fa-solid fa-right-from-bracket"></i> خروج</button>
+        </header>
+        <main class="container">
+            <!-- سيتم إضافة محتوى لوحة المدير والتقارير تباعاً -->
+            <div class="card">
+                <h3>جاري تحميل لوحة التحكم...</h3>
+            </div>
+        </main>
+    </div>
+
+    <footer class="site-footer">
+        صنع بواسطة غيث
+    </footer>
+
+    <!-- ملفات الجافاسكريبت ستضاف هنا لاحقاً -->
+    <script src="app.js"></script>
+</body>
+</html>
