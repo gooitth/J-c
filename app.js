@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEmployeeShiftEvents();
 });
 
-// تسجيل الدخول
+// تسجيل الدخول مع معالجة الأخطاء
 async function handleLogin(e) {
     e.preventDefault();
     const usernameInput = document.getElementById('username').value.trim();
@@ -31,6 +31,7 @@ async function handleLogin(e) {
     const errorMsg = document.getElementById('login-error');
 
     errorMsg.classList.add('hidden');
+    errorMsg.textContent = 'خطأ في اسم المستخدم أو كلمة المرور';
 
     try {
         if (sbClient) {
@@ -40,10 +41,24 @@ async function handleLogin(e) {
                 .eq('username', usernameInput)
                 .single();
 
-            if (error || !data || !data.active || data.password !== passwordInput) {
+            if (error || !data) {
+                errorMsg.textContent = 'المستخدم غير موجود!';
                 errorMsg.classList.remove('hidden');
                 return;
             }
+
+            if (!data.active) {
+                errorMsg.textContent = 'هذا الحساب معطل من قبل المدير!';
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            if (data.password !== passwordInput) {
+                errorMsg.textContent = 'كلمة المرور غير صحيحة!';
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
             currentUser = data;
         } else {
             if (usernameInput === 'admin' && passwordInput === 'admin') {
@@ -68,6 +83,7 @@ async function handleLogin(e) {
         }
     } catch (err) {
         console.error(err);
+        errorMsg.textContent = 'حدث خطأ في الاتصال بقاعدة البيانات.';
         errorMsg.classList.remove('hidden');
     }
 }
@@ -82,7 +98,7 @@ function handleLogout() {
 }
 
 // ---------------------------------------------------------------------------
-// لوحة الموظف (الشفتات والحسابات بالدولار الأمريكي)
+// لوحة الموظف والشفتات
 // ---------------------------------------------------------------------------
 function setupEmployeeShiftEvents() {
     const shiftStartForm = document.getElementById('shift-start-form');
@@ -114,7 +130,6 @@ function setupEmployeeShiftEvents() {
         if (el) el.addEventListener('input', calculateEmployeeTotals);
     });
 
-    // المعاملات المتفرقة
     const miscCountInput = document.getElementById('misc-count');
     if (miscCountInput) {
         miscCountInput.addEventListener('input', (e) => {
@@ -136,7 +151,6 @@ function setupEmployeeShiftEvents() {
         });
     }
 
-    // المعاملات غير المباعة (الأسماء والأعراب)
     const unsoldCountInput = document.getElementById('unsold-count');
     if (unsoldCountInput) {
         unsoldCountInput.addEventListener('input', (e) => {
@@ -178,7 +192,6 @@ function calculateEmployeeTotals() {
     const reinforcement = parseFloat(document.getElementById('reinforcement').value) || 0;
     const soldCount = parseInt(document.getElementById('sold-count').value) || 0;
 
-    // المعاملات المباعة (السكنر) تنضرب في 2 (كمثال لو السعر ثابت $2 أو حسب رغبتك، تم ضبطها على $2 أو تعدل القاعدة)
     const soldAmount = soldCount * 2; 
     document.getElementById('sold-amount-display').value = soldAmount.toFixed(2) + ' $';
 
@@ -244,19 +257,13 @@ async function saveAndFinishShift() {
 
     try {
         if (sbClient) {
-            // حفظ الشفت في قاعدة البيانات
             const { error } = await sbClient.from('shifts').insert([shiftData]);
             if (error) throw error;
-
-            // إضافة المبلغ المباع الكلي إلى نقد القاصة الخاصة بالمدير تلقائياً
             await addAmountToVault(totalSales);
         }
 
         alert('تم حفظ الشفت وإنهاؤه بنجاح وتحديث نقد القاصة!');
-        
-        // طباعة وصل الشفت
         printShiftReceipt(shiftData);
-
         window.location.reload();
     } catch (err) {
         console.error(err);
@@ -322,15 +329,13 @@ function printShiftReceipt(data) {
     printWindow.document.close();
 }
 
-
 // ---------------------------------------------------------------------------
-// لوحة تحكم المدير الكاملة (نقد القاصة، المستخدمين، الداشبورد، الأيام، التعديل، والحذف)
+// لوحة تحكم المدير
 // ---------------------------------------------------------------------------
 async function loadManagerDashboard() {
     const managerMainContainer = document.querySelector('#manager-screen .container');
     
     managerMainContainer.innerHTML = `
-        <!-- قسم نقد القاصة (للمدير فقط) -->
         <div class="card" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: white;">
             <h3><i class="fa-solid fa-vault"></i> نقد القاصة المركزية (خاص بالمدير فقط)</h3>
             <p style="color: #94a3b8; font-size: 14px; margin-bottom: 15px;">المبلغ الكلي المتراكم في القاصة بالدولار الأمريكي.</p>
@@ -352,11 +357,10 @@ async function loadManagerDashboard() {
             </div>
         </div>
 
-        <!-- إضافة مستخدم جديد -->
         <div id="add-user-section" class="card hidden" style="border: 2px dashed var(--primary-color);">
             <h3><i class="fa-solid fa-user-plus"></i> إضافة مستخدم جديد للنظام</h3>
             <form id="add-user-form" style="margin-top: 15px;">
-                <div class="form-group"><label>الاسم الكامل (يظهر للموظف تلقائياً):</label><input type="text" id="new-fullname" required placeholder="مثال: علي محمد"></div>
+                <div class="form-group"><label>الاسم الكامل:</label><input type="text" id="new-fullname" required placeholder="مثال: علي محمد"></div>
                 <div class="form-group"><label>اسم المستخدم (لتسجيل الدخول):</label><input type="text" id="new-username" required placeholder="مثال: ali_user"></div>
                 <div class="form-group"><label>كلمة المرور:</label><input type="password" id="new-password" required placeholder="كلمة المرور"></div>
                 <div class="form-group"><label>الصلاحية:</label>
@@ -370,13 +374,11 @@ async function loadManagerDashboard() {
             </form>
         </div>
 
-        <!-- إدارة المستخدمين وتفعيلهم وتعطيلهم -->
         <div class="card">
             <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-users-gear"></i> إدارة المستخدمين والموظفين</h3>
             <div id="users-table-container" style="overflow-x: auto;"><p>جاري التحميل...</p></div>
         </div>
 
-        <!-- تقارير الموظفين والأيام المدخلة -->
         <div class="card">
             <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-clipboard-list"></i> سجل الشفتات والأيام لكل موظف</h3>
             <div id="shifts-table-container" style="overflow-x: auto;"><p>جاري تحميل الشفتات...</p></div>
@@ -491,7 +493,7 @@ async function fetchAndRenderShifts() {
                 <td style="padding: 10px;">${s.ending_cash} $</td>
                 <td style="padding: 10px;">${new Date(s.created_at).toLocaleString()}</td>
                 <td style="padding: 10px; text-align: center;">
-                    <button onclick="printShiftReceipt(${encodeURIComponent(JSON.stringify(s))})" class="btn-primary" style="padding: 5px 10px; font-size: 12px; width: auto;">طباعة</button>
+                    <button onclick='printShiftReceipt(${JSON.stringify(s)})' class="btn-primary" style="padding: 5px 10px; font-size: 12px; width: auto;">طباعة</button>
                     <button onclick="deleteShift('${s.id}')" class="btn-danger" style="padding: 5px 10px; font-size: 12px; width: auto; background: #991b1b; margin-right: 5px;">حذف</button>
                 </td>
             </tr>`;
@@ -558,7 +560,7 @@ async function deleteShift(shiftId) {
         if (error) throw error;
         alert('تم حذف التقرير بنجاح.');
         await fetchAndRenderShifts();
-    } تدخل (err) {
+    } catch (err) {
         console.error(err);
         alert('خطأ أثناء الحذف.');
     }
