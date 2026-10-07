@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>G STORE - تسجيل الدخول</title>
-    <!-- استقرار تام بمكتبة Supabase النسخة الثابتة -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"></script>
+    <!-- استدعاء أحدث نسخة متوافقة تماماً مع المفاتيح الجديدة -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: Tahoma, sans-serif; background: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .box { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 350px; text-align: center; }
@@ -43,7 +43,7 @@
     const SUPABASE_URL = 'https://etztnzuivagqxjahlyqa.supabase.co';
     const SUPABASE_KEY = 'Sb_publishable_rHRivMdg5__JBuOND0tCKg_CY1Z7sA0';
     
-    // تهيئة الاتصال بشكل صحيح وآمن
+    // إنشاء العميل بالطريقة المتوافقة تماماً
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     async function loginUser() {
