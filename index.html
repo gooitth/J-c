@@ -2,60 +2,126 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>فحص تسجيل الدخول - G STORE</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>G STORE - تسجيل الدخول</title>
+    <!-- استقرار تام بمكتبة Supabase النسخة الثابتة -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"></script>
     <style>
         body { font-family: Tahoma, sans-serif; background: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .box { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 350px; text-align: center; }
         input, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
         button { background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .hidden { display: none; }
+        .admin-section { margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px; text-align: right; }
     </style>
 </head>
 <body>
 
-    <div class="box">
-        <h3>اختبار الاتصال والدخول</h3>
-        <input type="text" id="username" placeholder="اسم المستخدم (admin)" value="admin">
-        <input type="password" id="password" placeholder="كلمة المرور (1234)" value="1234">
-        <button onclick="testLogin()">فحص وتسجيل الدخول</button>
+    <!-- نافذة تسجيل الدخول -->
+    <div class="box" id="login-box">
+        <h3>تسجيل الدخول - G STORE</h3>
+        <input type="text" id="username" placeholder="اسم المستخدم" value="admin">
+        <input type="password" id="password" placeholder="كلمة المرور" value="1234">
+        <button onclick="loginUser()">دخول</button>
+    </div>
+
+    <!-- لوحة التحكم -->
+    <div class="box hidden" id="admin-box">
+        <h3 id="welcome-msg"></h3>
+        <button onclick="logout()" style="background: #dc3545;">تسجيل الخروج</button>
+        
+        <!-- قسم إضافة موظف -->
+        <div class="admin-section" id="create-user-section" style="display: none;">
+            <h4>إضافة موظف جديد</h4>
+            <input type="text" id="new-user" placeholder="اسم المستخدم للموظف">
+            <input type="password" id="new-pass" placeholder="كلمة المرور للموظف">
+            <button onclick="addNewUser()">حفظ الموظف</button>
+        </div>
     </div>
 
 <script>
     const SUPABASE_URL = 'https://etztnzuivagqxjahlyqa.supabase.co';
     const SUPABASE_KEY = 'Sb_publishable_rHRivMdg5__JBuOND0tCKg_CY1Z7sA0';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // تهيئة الاتصال بشكل صحيح وآمن
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    async function testLogin() {
+    async function loginUser() {
         let u = document.getElementById('username').value.trim();
         let p = document.getElementById('password').value.trim();
 
-        alert('جاري الاتصال بقاعدة البيانات وفحص المستخدم: ' + u);
+        if (!u || !p) {
+            alert('الرجاء إدخال الحقول');
+            return;
+        }
 
-        // جلب كل البيانات من الجدول لنرى هل يتصل أصلاً أم لا
-        let { data, error } = await supabase
+        try {
+            let { data, error } = await supabaseClient
+                .from('users')
+                .select('*')
+                .eq('username', u)
+                .eq('password', p);
+
+            if (error) {
+                alert('خطأ في القاعدة: ' + error.message);
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                alert('اسم المستخدم أو كلمة المرور غير صحيحة!');
+                return;
+            }
+
+            let user = data[0];
+            localStorage.setItem('currentUser', JSON.stringify(user));
+            showDashboard(user);
+
+        } catch (err) {
+            alert('حدث استثناء تقني: ' + err.message);
+        }
+    }
+
+    function showDashboard(user) {
+        document.getElementById('login-box').classList.add('hidden');
+        document.getElementById('admin-box').classList.remove('hidden');
+        document.getElementById('welcome-msg').innerText = `مرحباً، ${user.username} (${user.role})`;
+
+        if (user.role === 'admin') {
+            document.getElementById('create-user-section').style.display = 'block';
+        }
+    }
+
+    async function addNewUser() {
+        let nu = document.getElementById('new-user').value.trim();
+        let np = document.getElementById('new-pass').value.trim();
+
+        if (!nu || !np) {
+            alert('يرجى ملء الحقول');
+            return;
+        }
+
+        let { error } = await supabaseClient
             .from('users')
-            .select('*');
+            .insert([{ username: nu, password: np, role: 'employee' }]);
 
         if (error) {
-            alert('خطأ في الاتصال بقاعدة البيانات: ' + error.message);
-            console.error(error);
-            return;
-        }
-
-        if (!data || data.length === 0) {
-            alert('الجدول فارغ تماماً! لا توجد أي بيانات بداخل جدول users.');
-            return;
-        }
-
-        alert('تم الاتصال بنجاح! عدد المستخدمين بالجدول: ' + data.length);
-
-        // نبحث يدوياً عن المستخدم وكلمة المرور
-        let found = data.find(user => user.username === u && user.password === p);
-
-        if (found) {
-            alert('تم العثور على المستخدم بنجاح! الصلاحية هي: ' + found.role);
+            alert('خطأ بالإضافة: ' + error.message);
         } else {
-            alert('فشل المطابقة! اسم المستخدم أو كلمة المرور غير مطابقة لما هو موجود في الجدول.');
+            alert('تم إضافة الموظف بنجاح!');
+            document.getElementById('new-user').value = '';
+            document.getElementById('new-pass').value = '';
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('currentUser');
+        location.reload();
+    }
+
+    window.onload = function() {
+        let saved = localStorage.getItem('currentUser');
+        if (saved) {
+            showDashboard(JSON.parse(saved));
         }
     }
 </script>
