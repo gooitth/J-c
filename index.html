@@ -2,123 +2,60 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>نظام G STORE - تسجيل الدخول وإدارة الموظفين</title>
-    <!-- استدعاء مكتبة Supabase -->
+    <title>فحص تسجيل الدخول - G STORE</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: Tahoma, sans-serif; background: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .box { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 350px; text-align: center; }
         input, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
         button { background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        .hidden { display: none; }
-        .admin-section { margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px; text-align: right; }
     </style>
 </head>
 <body>
 
-    <!-- نافذة تسجيل الدخول -->
-    <div class="box" id="login-box">
-        <h3>تسجيل الدخول - G STORE</h3>
-        <input type="text" id="username" placeholder="اسم المستخدم">
-        <input type="password" id="password" placeholder="كلمة المرور">
-        <button onclick="login()">دخول</button>
-    </div>
-
-    <!-- لوحة التحكم -->
-    <div class="box hidden" id="admin-box">
-        <h3 id="welcome-msg"></h3>
-        <button onclick="logout()" style="background: #dc3545;">تسجيل الخروج</button>
-        
-        <!-- قسم إضافة موظف (يظهر للمدير فقط) -->
-        <div class="admin-section" id="create-user-section" style="display: none;">
-            <h4>إضافة موظف جديد</h4>
-            <input type="text" id="new-user" placeholder="اسم المستخدم للموظف">
-            <input type="password" id="new-pass" placeholder="كلمة المرور للموظف">
-            <button onclick="addNewUser()">حفظ الموظف في السحابة</button>
-        </div>
+    <div class="box">
+        <h3>اختبار الاتصال والدخول</h3>
+        <input type="text" id="username" placeholder="اسم المستخدم (admin)" value="admin">
+        <input type="password" id="password" placeholder="كلمة المرور (1234)" value="1234">
+        <button onclick="testLogin()">فحص وتسجيل الدخول</button>
     </div>
 
 <script>
-    // تم دمج معلومات الاتصال الخاصة بك هنا مسبقاً
     const SUPABASE_URL = 'https://etztnzuivagqxjahlyqa.supabase.co';
     const SUPABASE_KEY = 'Sb_publishable_rHRivMdg5__JBuOND0tCKg_CY1Z7sA0';
-    
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // دالة تسجيل الدخول
-    async function login() {
+    async function testLogin() {
         let u = document.getElementById('username').value.trim();
         let p = document.getElementById('password').value.trim();
 
-        if (!u || !p) {
-            alert('الرجاء إدخال اسم المستخدم وكلمة المرور');
-            return;
-        }
+        alert('جاري الاتصال بقاعدة البيانات وفحص المستخدم: ' + u);
 
+        // جلب كل البيانات من الجدول لنرى هل يتصل أصلاً أم لا
         let { data, error } = await supabase
             .from('users')
-            .select('*')
-            .eq('username', u)
-            .eq('password', p)
-            .single();
-
-        if (error || !data) {
-            alert('اسم المستخدم أو كلمة المرور غير صحيحة!');
-            return;
-        }
-
-        localStorage.setItem('currentUser', JSON.stringify(data));
-        loadDashboard();
-    }
-
-    // عرض اللوحة حسب الصلاحية
-    function loadDashboard() {
-        let current = JSON.parse(localStorage.getItem('currentUser'));
-        if (!current) return;
-
-        document.getElementById('login-box').classList.add('hidden');
-        document.getElementById('admin-box').classList.remove('hidden');
-        document.getElementById('welcome-msg').innerText = `مرحباً، ${current.username} (${current.role})`;
-
-        if (current.role === 'admin') {
-            document.getElementById('create-user-section').style.display = 'block';
-        }
-    }
-
-    // دالة إضافة موظف جديد بواسطة المدير
-    async function addNewUser() {
-        let nu = document.getElementById('new-user').value.trim();
-        let np = document.getElementById('new-pass').value.trim();
-
-        if (!nu || !np) {
-            alert('يرجى ملء كافة الحقول المطلوبة');
-            return;
-        }
-
-        let { error } = await supabase
-            .from('users')
-            .insert([{ username: nu, password: np, role: 'employee' }]);
+            .select('*');
 
         if (error) {
-            alert('حدث خطأ أو اسم المستخدم موجود مسبقاً: ' + error.message);
-        } else {
-            alert('تم حفظ الموظف بنجاح! يمكنه الدخول من أي جهاز.');
-            document.getElementById('new-user').value = '';
-            document.getElementById('new-pass').value = '';
+            alert('خطأ في الاتصال بقاعدة البيانات: ' + error.message);
+            console.error(error);
+            return;
         }
-    }
 
-    // تسجيل الخروج
-    function logout() {
-        localStorage.removeItem('currentUser');
-        location.reload();
-    }
+        if (!data || data.length === 0) {
+            alert('الجدول فارغ تماماً! لا توجد أي بيانات بداخل جدول users.');
+            return;
+        }
 
-    // التحقق من الجلسة عند فتح الصفحة
-    window.onload = function() {
-        if (localStorage.getItem('currentUser')) {
-            loadDashboard();
+        alert('تم الاتصال بنجاح! عدد المستخدمين بالجدول: ' + data.length);
+
+        // نبحث يدوياً عن المستخدم وكلمة المرور
+        let found = data.find(user => user.username === u && user.password === p);
+
+        if (found) {
+            alert('تم العثور على المستخدم بنجاح! الصلاحية هي: ' + found.role);
+        } else {
+            alert('فشل المطابقة! اسم المستخدم أو كلمة المرور غير مطابقة لما هو موجود في الجدول.');
         }
     }
 </script>
