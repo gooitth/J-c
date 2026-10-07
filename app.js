@@ -1,11 +1,19 @@
 let currentUser = null;
 let currentShift = null;
 
-// قاعدة بيانات محلية مؤقتة للمستخدمين لضمان عدم حدوث أي عطل بالاتصال
-const localUsers = [
-    { id: '1', username: 'admin', password: 'admin', full_name: 'المدير العام', role: 'manager', active: true },
-    { id: '2', username: 'employee', password: '1234', full_name: 'أحمد الموظف', role: 'employee', active: true }
-];
+// قاعدة بيانات المستخدمين المحلية (تُحفظ في المتصفح لكي لا تختفي عند تسجيل الخروج)
+function getStoredUsers() {
+    const defaultUsers = [
+        { id: '1', username: 'admin', password: 'admin', full_name: 'المدير العام', role: 'manager', active: true },
+        { id: '2', username: 'employee', password: '1234', full_name: 'أحمد الموظف', role: 'employee', active: true }
+    ];
+    const stored = localStorage.getItem('gstore_users');
+    return stored ? JSON.parse(stored) : defaultUsers;
+}
+
+function saveUsers(users) {
+    localStorage.setItem('gstore_users', JSON.stringify(users));
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
@@ -30,8 +38,8 @@ function handleLogin(e) {
 
     errorMsg.classList.add('hidden');
 
-    // البحث عن المستخدم
-    const foundUser = localUsers.find(u => u.username === usernameInput && u.password === passwordInput);
+    const users = getStoredUsers();
+    const foundUser = users.find(u => u.username === usernameInput && u.password === passwordInput);
 
     if (!foundUser) {
         errorMsg.textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة!';
@@ -40,7 +48,7 @@ function handleLogin(e) {
     }
 
     if (!foundUser.active) {
-        errorMsg.textContent = 'هذا الحساب معطل!';
+        errorMsg.textContent = 'هذا الحساب معطل من قبل المدير!';
         errorMsg.classList.remove('hidden');
         return;
     }
@@ -68,7 +76,7 @@ function handleLogout() {
 }
 
 // ---------------------------------------------------------------------------
-// لوحة الموظف والشفتات
+// لوحة الموظف والشفتات (مع تسجيل الوقت تلقائياً)
 // ---------------------------------------------------------------------------
 function setupEmployeeShiftEvents() {
     const shiftStartForm = document.getElementById('shift-start-form');
@@ -83,6 +91,7 @@ function setupEmployeeShiftEvents() {
                 return;
             }
 
+            // وقت بداية الشفت تلقائياً
             currentShift = {
                 shift_type: shiftType,
                 opening_cash: openingCash,
@@ -162,7 +171,8 @@ function calculateEmployeeTotals() {
     const reinforcement = parseFloat(document.getElementById('reinforcement').value) || 0;
     const soldCount = parseInt(document.getElementById('sold-count').value) || 0;
 
-    const soldAmount = soldCount * 2; 
+    // تم التعديل: الضرب في 2000 بناءً على طلبك
+    const soldAmount = soldCount * 2000; 
     document.getElementById('sold-amount-display').value = soldAmount.toFixed(2) + ' $';
 
     let miscTotal = 0;
@@ -186,7 +196,7 @@ function saveAndFinishShift() {
     const openingCash = parseFloat(document.getElementById('opening-cash').value) || 0;
     const reinforcement = parseFloat(document.getElementById('reinforcement').value) || 0;
     const soldCount = parseInt(document.getElementById('sold-count').value) || 0;
-    const soldAmount = soldCount * 2;
+    const soldAmount = soldCount * 2000; // الضرب في 2000
     
     let miscTotal = 0;
     document.querySelectorAll('.misc-price-input').forEach(input => {
@@ -207,6 +217,8 @@ function saveAndFinishShift() {
 
     const totalSales = soldAmount + miscTotal;
     const endingCash = openingCash + reinforcement - totalSales;
+    
+    // وقت النهاية تلقائياً
     const endTime = new Date().toISOString();
 
     const shiftData = {
@@ -226,12 +238,10 @@ function saveAndFinishShift() {
         created_at: new Date().toISOString()
     };
 
-    // حفظ محلي في المتصفح حتى لا يضيع أي تقرير
     let savedShifts = JSON.parse(localStorage.getItem('gstore_shifts') || '[]');
     savedShifts.unshift(shiftData);
     localStorage.setItem('gstore_shifts', JSON.stringify(savedShifts));
 
-    // تحديث القاصة محلياً
     let currentVault = parseFloat(localStorage.getItem('gstore_vault') || '1000');
     localStorage.setItem('gstore_vault', currentVault + totalSales);
 
@@ -260,8 +270,8 @@ function printShiftReceipt(data) {
             <div class="box">
                 <p><strong>اسم الموظف:</strong> ${data.employee_name}</p>
                 <p><strong>نوع الشفت:</strong> ${data.shift_type}</p>
-                <p><strong>وقت البدء:</strong> ${new Date(data.start_time).toLocaleString()}</p>
-                <p><strong>وقت الانتهاء:</strong> ${new Date(data.end_time).toLocaleString()}</p>
+                <p><strong>وقت بدء الشفت:</strong> ${new Date(data.start_time).toLocaleString()}</p>
+                <p><strong>وقت نهاية الشفت:</strong> ${new Date(data.end_time).toLocaleString()}</p>
             </div>
             <div class="box">
                 <p><strong>النقد المستلم (بداية اليوم):</strong> ${data.opening_cash} $</p>
@@ -284,7 +294,7 @@ function printShiftReceipt(data) {
 }
 
 // ---------------------------------------------------------------------------
-// لوحة تحكم المدير
+// لوحة تحكم المدير (مع الكشوفات الجزئية والكليات)
 // ---------------------------------------------------------------------------
 function loadManagerDashboard() {
     const managerMainContainer = document.querySelector('#manager-screen .container');
@@ -335,7 +345,20 @@ function loadManagerDashboard() {
         </div>
 
         <div class="card">
-            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-clipboard-list"></i> سجل الشفتات والأيام لكل موظف</h3>
+            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-clipboard-list"></i> سجل الشفتات (فلترة الكشف الكلي والجزئي)</h3>
+            
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; background: #f8fafc; padding: 10px; border-radius: 8px;">
+                <div style="flex: 1; min-width: 200px;">
+                    <label style="font-size: 13px; display: block; margin-bottom: 5px;">فلترة حسب الموظف (كشف جزئي أو كلي):</label>
+                    <select id="filter-employee" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                        <option value="all">كل الموظفين (كشف كلي)</option>
+                    </select>
+                </div>
+                <div style="display: flex; align-items: flex-end;">
+                    <button type="button" id="apply-filter-btn" class="btn-primary" style="height: 38px; width: auto;"><i class="fa-solid fa-filter"></i> تطبيق الفلتر</button>
+                </div>
+            </div>
+
             <div id="shifts-table-container" style="overflow-x: auto;"></div>
         </div>
     `;
@@ -371,26 +394,41 @@ function loadManagerDashboard() {
         const password = document.getElementById('new-password').value.trim();
         const role = document.getElementById('new-role').value;
 
-        localUsers.push({ id: Date.now().toString(), username, password, full_name: fullName, role, active: true });
+        let users = getStoredUsers();
+        if (users.some(u => u.username === username)) {
+            alert('اسم المستخدم موجود مسبقاً، يختار اسم آخر.');
+            return;
+        }
+
+        users.push({ id: Date.now().toString(), username, password, full_name: fullName, role, active: true });
+        saveUsers(users);
         alert('تم إضافة المستخدم بنجاح!');
         document.getElementById('add-user-form').reset();
         addUserSection.classList.add('hidden');
         addUserBtn.classList.remove('hidden');
         renderUsersTable();
+        populateEmployeeFilter();
+    });
+
+    document.getElementById('apply-filter-btn').addEventListener('click', () => {
+        const selectedEmp = document.getElementById('filter-employee').value;
+        renderShiftsTable(selectedEmp);
     });
 
     renderUsersTable();
-    renderShiftsTable();
+    populateEmployeeFilter();
+    renderShiftsTable('all');
 }
 
 function renderUsersTable() {
     const container = document.getElementById('users-table-container');
     if (!container) return;
 
+    const users = getStoredUsers();
     let html = `<table style="width: 100%; border-collapse: collapse; text-align: right;">
         <thead><tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;"><th style="padding: 10px;">الاسم الكامل</th><th style="padding: 10px;">اسم المستخدم</th><th style="padding: 10px;">الصلاحية</th><th style="padding: 10px;">الحالة</th><th style="padding: 10px; text-align: center;">إجراءات</th></tr></thead><tbody>`;
 
-    localUsers.forEach(u => {
+    users.forEach(u => {
         html += `<tr style="border-bottom: 1px solid #e2e8f0;">
             <td style="padding: 10px;">${u.full_name}</td>
             <td style="padding: 10px;">${u.username}</td>
@@ -406,37 +444,55 @@ function renderUsersTable() {
 }
 
 window.toggleUserStatus = function(id) {
-    const u = localUsers.find(user => user.id === id);
+    let users = getStoredUsers();
+    const u = users.find(user => user.id === id);
     if (u) {
         if (u.username === 'admin') {
             alert('لا يمكن تغيير حالة المدير الرئيسي!');
             return;
         }
         u.active = !u.active;
+        saveUsers(users);
         renderUsersTable();
     }
 };
 
-function renderShiftsTable() {
+function populateEmployeeFilter() {
+    const select = document.getElementById('filter-employee');
+    if (!select) return;
+
+    const users = getStoredUsers();
+    select.innerHTML = `<option value="all">كل الموظفين (كشف كلي)</option>`;
+    users.forEach(u => {
+        select.innerHTML += `<option value="${u.full_name}">${u.full_name}</option>`;
+    });
+}
+
+function renderShiftsTable(filterEmployee = 'all') {
     const container = document.getElementById('shifts-table-container');
     if (!container) return;
 
-    const savedShifts = JSON.parse(localStorage.getItem('gstore_shifts') || '[]');
+    let savedShifts = JSON.parse(localStorage.getItem('gstore_shifts') || '[]');
+
+    if (filterEmployee !== 'all') {
+        savedShifts = savedShifts.filter(s => s.employee_name === filterEmployee);
+    }
+
     if (!savedShifts.length) {
-        container.innerHTML = `<p>لا توجد شفتات مسجلة حتى الآن.</p>`;
+        container.innerHTML = `<p>لا توجد شفتات مسجلة تطابق هذا الاختيار.</p>`;
         return;
     }
 
     let html = `<table style="width: 100%; border-collapse: collapse; text-align: right;">
-        <thead><tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;"><th style="padding: 10px;">الموظف</th><th style="padding: 10px;">نوع الشفت</th><th style="padding: 10px;">المباع الكلي</th><th style="padding: 10px;">صندوق النهاية</th><th style="padding: 10px;">التاريخ والوقت</th><th style="padding: 10px; text-align: center;">التحكم</th></tr></thead><tbody>`;
+        <thead><tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1;"><th style="padding: 10px;">الموظف</th><th style="padding: 10px;">نوع الشفت</th><th style="padding: 10px;">وقت البدء والانتهاء</th><th style="padding: 10px;">المباع الكلي</th><th style="padding: 10px;">صندوق النهاية</th><th style="padding: 10px; text-align: center;">التحكم</th></tr></thead><tbody>`;
 
     savedShifts.forEach((s, index) => {
         html += `<tr style="border-bottom: 1px solid #e2e8f0;">
             <td style="padding: 10px;">${s.employee_name}</td>
             <td style="padding: 10px;">${s.shift_type}</td>
+            <td style="padding: 10px; font-size: 12px; color: #555;">بدء: ${new Date(s.start_time).toLocaleTimeString()}<br>انتهاء: ${new Date(s.end_time).toLocaleTimeString()}</td>
             <td style="padding: 10px; color: green; font-weight: bold;">${s.total_sales} $</td>
             <td style="padding: 10px;">${s.ending_cash} $</td>
-            <td style="padding: 10px;">${new Date(s.created_at).toLocaleString()}</td>
             <td style="padding: 10px; text-align: center;">
                 <button onclick='printShiftReceipt(${JSON.stringify(s)})' class="btn-primary" style="padding: 5px 10px; font-size: 12px; width: auto;">طباعة</button>
                 <button onclick="deleteShift(${index})" class="btn-danger" style="padding: 5px 10px; font-size: 12px; width: auto; background: #991b1b; margin-right: 5px;">حذف</button>
@@ -452,5 +508,6 @@ window.deleteShift = function(index) {
     let savedShifts = JSON.parse(localStorage.getItem('gstore_shifts') || '[]');
     savedShifts.splice(index, 1);
     localStorage.setItem('gstore_shifts', JSON.stringify(savedShifts));
-    renderShiftsTable();
+    const currentFilter = document.getElementById('filter-employee') ? document.getElementById('filter-employee').value : 'all';
+    renderShiftsTable(currentFilter);
 };
