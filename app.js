@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupShiftEvents();
 });
 
-// تسجيل الدخول والتحقق من جدول profiles في Supabase
+// تسجيل الدخول والتحقق من جدول profiles
 async function handleLogin(e) {
     e.preventDefault();
     const usernameInput = document.getElementById('username').value.trim();
@@ -48,7 +48,6 @@ async function handleLogin(e) {
 
             currentUser = data;
         } else {
-            // بيانات محلية افتراضية في حال عدم تحميل المكتبة لأي سبب
             if (usernameInput === 'admin' && passwordInput === 'admin') {
                 currentUser = { id: 'admin-id', full_name: 'المدير العام', role: 'manager', active: true };
             } else if (usernameInput === 'employee' && passwordInput === '1234') {
@@ -84,7 +83,7 @@ function handleLogout() {
     document.getElementById('login-form').reset();
 }
 
-// إعداد أحداث الحسابات والشفت
+// إعداد أحداث الحسابات والشفت للموظف
 function setupShiftEvents() {
     const shiftStartForm = document.getElementById('shift-start-form');
     if (shiftStartForm) {
@@ -197,12 +196,34 @@ function calculateTotals() {
 
 async function finishShift() {
     if (!confirm('هل أنت متأكد من إنهاء الشفت وحفظ التقرير نهائياً؟')) return;
-    
-    // حفظ البيانات مستقبلاً بجدول shifts في Supabase
     alert('تم إنهاء الشفت وحفظ التقرير بنجاح!');
     window.location.reload();
 }
 
-function loadManagerDashboard() {
-    console.log('لوحة التحكم نشطة');
+// تحميل لوحة تحكم المدير وإحصائيات النظام
+async function loadManagerDashboard() {
+    const managerMainContainer = document.querySelector('#manager-screen .container');
+    
+    managerMainContainer.innerHTML = `
+        <div class="card">
+            <h3><i class="fa-solid fa-chart-pie"></i> لوحة الإحصائيات العامة</h3>
+            <p style="margin-bottom: 15px; color: #64748b;">أهلاً بك يا مدير النظام. هذه لوحة التحكم والتقارير الخاصة بالنظام.</p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button type="button" id="refresh-reports-btn" class="btn-primary" style="width: auto;"><i class="fa-solid fa-rotate"></i> تحديث البيانات</button>
+                <button type="button" onclick="window.print();" class="btn-success" style="width: auto;"><i class="fa-solid fa-print"></i> طباعة الصفحة</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3><i class="fa-solid fa-list-check"></i> سجل الشفتات والتقارير</h3>
+            <div id="reports-list-container">
+                <p style="text-align: center; color: #64748b; padding: 20px;">لا توجد شفتات مسجلة حتى الآن أو جاري جلب البيانات...</p>
+            </div>
+        </div>
+    `;
+
+    const refreshBtn = document.getElementById('refresh-reports-btn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadManagerDashboard);
+    }
 }
