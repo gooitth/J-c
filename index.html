@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>G STORE - نظام الإدارة وتسجيل الدخول</title>
-    <!-- استدعاء مكتبة Neon Serverless والدعم الفني -->
+    <title>نظام الصناديق - الإدارة وتسجيل الدخول</title>
+    <!-- مكتبة Neon Serverless للاتصال السحابي -->
     <script src="https://cdn.jsdelivr.net/npm/@neondatabase/serverless@0.6.0/dist/index.min.js"></script>
     <style>
         :root {
-            --primary-color: #2563eb;
-            --primary-hover: #1d4ed8;
-            --bg-color: #f8fafc;
+            --primary-color: #0f172a;
+            --accent-color: #0ea5e9;
+            --accent-hover: #0284c7;
+            --bg-color: #f1f5f9;
             --card-bg: #ffffff;
-            --text-color: #1e293b;
+            --text-color: #334155;
             --border-color: #cbd5e1;
         }
         body {
@@ -28,74 +29,92 @@
         }
         .container {
             width: 100%;
-            max-width: 450px;
+            max-width: 460px;
             background: var(--card-bg);
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            border-top: 5px solid var(--accent-color);
         }
         h2 {
             text-align: center;
             margin-bottom: 1.5rem;
             color: var(--primary-color);
+            font-size: 1.75rem;
         }
         .form-group {
-            margin-bottom: 1rem;
+            margin-bottom: 1.25rem;
         }
         label {
             display: block;
             margin-bottom: 0.5rem;
             font-weight: 600;
+            color: #475569;
         }
         input, select {
             width: 100%;
-            padding: 0.75rem;
+            padding: 0.85rem;
             border: 1px solid var(--border-color);
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 1rem;
             box-sizing: border-box;
+            background-color: #f8fafc;
+            transition: all 0.3s;
         }
         input:focus, select:focus {
             outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            border-color: var(--accent-color);
+            background-color: #ffffff;
+            box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.15);
         }
         button {
             width: 100%;
-            padding: 0.75rem;
-            background-color: var(--primary-color);
+            padding: 0.85rem;
+            background-color: var(--accent-color);
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 1rem;
             font-weight: bold;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: background-color 0.2s, transform 0.1s;
         }
         button:hover {
-            background-color: var(--primary-hover);
+            background-color: var(--accent-hover);
+        }
+        button:active {
+            transform: scale(0.98);
         }
         .error-msg {
-            color: #dc2626;
+            color: #ef4444;
             text-align: center;
             margin-top: 1rem;
             font-size: 0.9rem;
+            font-weight: 500;
         }
         .success-msg {
-            color: #16a34a;
+            color: #10b981;
             text-align: center;
             margin-top: 1rem;
             font-size: 0.9rem;
+            font-weight: 500;
         }
         .dashboard {
             display: none;
         }
+        .user-badge {
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+        }
         .logout-btn {
-            background-color: #dc2626;
-            margin-top: 1rem;
+            background-color: #ef4444;
+            margin-top: 1.5rem;
         }
         .logout-btn:hover {
-            background-color: #b91c1c;
+            background-color: #dc2626;
         }
         hr {
             margin: 1.5rem 0;
@@ -109,7 +128,8 @@
     <div class="container">
         <!-- واجهة تسجيل الدخول -->
         <div id="loginSection">
-            <h2>G STORE - تسجيل الدخول</h2>
+            <h2>📦 نظام الصناديق</h2>
+            <p style="text-align: center; color: #64748b; margin-bottom: 1.5rem; font-size: 0.95rem;">تسجيل الدخول للنظام السحابي</p>
             <form id="loginForm">
                 <div class="form-group">
                     <label for="username">اسم المستخدم</label>
@@ -119,25 +139,27 @@
                     <label for="password">كلمة المرور</label>
                     <input type="password" id="password" required placeholder="أدخل كلمة المرور">
                 </div>
-                <button type="submit">دخول</button>
+                <button type="submit">تسجيل الدخول</button>
             </form>
             <div id="loginError" class="error-msg"></div>
         </div>
 
         <!-- لوحة التحكم -->
         <div id="dashboardSection" class="dashboard">
-            <h2>لوحة تحكم G STORE</h2>
-            <p>مرحباً، <span id="userDisplayName" style="font-weight: bold;"></span></p>
-            <p>الصلاحية: <span id="userDisplayRole" style="font-weight: bold; color: var(--primary-color);"></span></p>
+            <h2>📦 إدارة نظام الصناديق</h2>
+            <div class="user-badge">
+                <p style="margin: 0 0 0.5rem 0;">مرحباً، <span id="userDisplayName" style="font-weight: bold;"></span></p>
+                <p style="margin: 0;">الصلاحية: <span id="userDisplayRole" style="font-weight: bold;"></span></p>
+            </div>
             
-            <!-- قسم خاص بالمدير (Admin) فقط لإضافة موظفين جدد -->
+            <!-- لوحة المدير لإضافة المستخدمين -->
             <div id="adminPanel" style="display: none;">
                 <hr>
-                <h3>إضافة موظف جديد سحابياً</h3>
+                <h3 style="color: var(--primary-color); font-size: 1.2rem; margin-bottom: 1rem;">إضافة مستخدم جديد</h3>
                 <form id="addEmployeeForm">
                     <div class="form-group">
-                        <label for="newUsername">اسم المستخدم للموظف</label>
-                        <input type="text" id="newUsername" required placeholder="اسم المستخدم الجديد">
+                        <label for="newUsername">اسم المستخدم الجديد</label>
+                        <input type="text" id="newUsername" required placeholder="اسم المستخدم">
                     </div>
                     <div class="form-group">
                         <label for="newPassword">كلمة المرور</label>
@@ -150,7 +172,7 @@
                             <option value="admin">مدير (Admin)</option>
                         </select>
                     </div>
-                    <button type="submit">حفظ الموظف في قاعدة البيانات</button>
+                    <button type="submit">حفظ المستخدم في قاعدة البيانات</button>
                 </form>
                 <div id="actionMsg"></div>
             </div>
@@ -160,10 +182,9 @@
     </div>
 
     <script>
-        // إعدادات الاتصال بقاعدة بيانات Neon الخاصة بك
+        // رابط الاتصال بقاعدة بيانات Neon السحابية
         const connectionString = 'Postgresql://authenticator:npg_nthwd2kJisM1@ep-autumn-lake-b5pj66gk-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
         
-        // تهيئة الاتصال باستخدام Neon Serverless
         const { neon } = neonConfig;
         const sql = neon(connectionString);
 
@@ -179,30 +200,27 @@
         const addEmployeeForm = document.getElementById('addEmployeeForm');
         const actionMsg = document.getElementById('actionMsg');
 
-        // التحقق من الجلسة المخزنة مسبقاً عند فتح الصفحة
+        // التحقق من الجلسة المخزنة مسبقاً
         window.addEventListener('DOMContentLoaded', () => {
-            const savedUser = localStorage.getItem('gstore_user');
+            const savedUser = localStorage.getItem('boxes_system_user');
             if (savedUser) {
-                const userData = JSON.parse(savedUser);
-                showDashboard(userData);
+                showDashboard(JSON.parse(savedUser));
             }
         });
 
-        // عملية تسجيل الدخول
+        // تسجيل الدخول
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             loginError.textContent = 'جاري التحقق من البيانات...';
             
-            const usernameInput = document.getElementById('username').value.trim();
-            const passwordInput = document.getElementById('password').value.trim();
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value.trim();
 
             try {
-                // جلب المستخدم من جدول users في قاعدة بيانات Neon
-                const result = await sql`SELECT * FROM users WHERE username = ${usernameInput} AND password = ${passwordInput}`;
-                
-                if (result.length > 0) {
-                    const user = result[0];
-                    localStorage.setItem('gstore_user', JSON.stringify(user));
+                const res = await sql`SELECT * FROM users WHERE username = ${u} AND password = ${p}`;
+                if (res.length > 0) {
+                    const user = res[0];
+                    localStorage.setItem('boxes_system_user', JSON.stringify(user));
                     loginError.textContent = '';
                     showDashboard(user);
                 } else {
@@ -210,53 +228,43 @@
                 }
             } catch (err) {
                 console.error(err);
-                loginError.textContent = 'حدث خطأ في الاتصال بقاعدة البيانات. تأكد من اتصال الإنترنت.';
+                loginError.textContent = 'تعذر الاتصال بقاعدة البيانات. تحقق من الإنترنت.';
             }
         });
 
-        // عرض لوحة التحكم وتحديد الصلاحيات
         function showDashboard(user) {
             loginSection.style.display = 'none';
             dashboardSection.style.display = 'block';
-            
             userDisplayName.textContent = user.username;
-            userDisplayRole.textContent = user.role === 'admin' ? 'مدير (Admin)' : 'موظف (Employee)';
-
-            if (user.role === 'admin') {
-                adminPanel.style.display = 'block';
-            } else {
-                adminPanel.style.display = 'none';
-            }
+            userDisplayRole.textContent = user.role === 'admin' ? 'مدير نظام (Admin)' : 'موظف (Employee)';
+            adminPanel.style.display = user.role === 'admin' ? 'block' : 'none';
         }
 
-        // تسجيل الخروج
         logoutBtn.addEventListener('click', () => {
-            localStorage.removeItem('gstore_user');
+            localStorage.removeItem('boxes_system_user');
             dashboardSection.style.display = 'none';
             loginSection.style.display = 'block';
             loginForm.reset();
         });
 
-        // إضافة مستخدم/موظف جديد بواسطة المدير سحابياً
+        // إضافة مستخدم جديد من لوحة المدير
         addEmployeeForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            actionMsg.textContent = 'جاري الحفظ في السحابة...';
+            actionMsg.textContent = 'جاري الحفظ بالسحابة...';
             actionMsg.className = '';
 
-            const newUsername = document.getElementById('newUsername').value.trim();
-            const newPassword = document.getElementById('newPassword').value.trim();
-            const newRole = document.getElementById('newRole').value;
+            const nu = document.getElementById('newUsername').value.trim();
+            const np = document.getElementById('newPassword').value.trim();
+            const nr = document.getElementById('newRole').value;
 
             try {
-                // إدخال المستخدم الجديد في جدول users في Neon
-                await sql`INSERT INTO users (username, password, role) VALUES (${newUsername}, ${newPassword}, ${newRole})`;
-                
-                actionMsg.textContent = 'تم إضافة المستخدم بنجاح إلى قاعدة بيانات Neon!';
+                await sql`INSERT INTO users (username, password, role) VALUES (${nu}, ${np}, ${nr})`;
+                actionMsg.textContent = 'تم إضافة المستخدم بنجاح لقاعدة البيانات!';
                 actionMsg.className = 'success-msg';
                 addEmployeeForm.reset();
             } catch (err) {
                 console.error(err);
-                actionMsg.textContent = 'فشل الحفظ: ربما اسم المستخدم موجود مسبقاً أو حدث خطأ تقني.';
+                actionMsg.textContent = 'فشل الحفظ: قد يكون اسم المستخدم موجوداً مسبقاً.';
                 actionMsg.className = 'error-msg';
             }
         });
