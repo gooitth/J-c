@@ -2,129 +2,264 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>G STORE - تسجيل الدخول</title>
-    <!-- استدعاء أحدث نسخة متوافقة تماماً مع المفاتيح الجديدة -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>G STORE - نظام الإدارة وتسجيل الدخول</title>
+    <!-- استدعاء مكتبة Neon Serverless والدعم الفني -->
+    <script src="https://cdn.jsdelivr.net/npm/@neondatabase/serverless@0.6.0/dist/index.min.js"></script>
     <style>
-        body { font-family: Tahoma, sans-serif; background: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .box { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 350px; text-align: center; }
-        input, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
-        button { background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        .hidden { display: none; }
-        .admin-section { margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px; text-align: right; }
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-color: #1e293b;
+            --border-color: #cbd5e1;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            width: 100%;
+            max-width: 450px;
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: var(--primary-color);
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        input, select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+        .error-msg {
+            color: #dc2626;
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+        .success-msg {
+            color: #16a34a;
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+        .dashboard {
+            display: none;
+        }
+        .logout-btn {
+            background-color: #dc2626;
+            margin-top: 1rem;
+        }
+        .logout-btn:hover {
+            background-color: #b91c1c;
+        }
+        hr {
+            margin: 1.5rem 0;
+            border: 0;
+            border-top: 1px solid var(--border-color);
+        }
     </style>
 </head>
 <body>
 
-    <!-- نافذة تسجيل الدخول -->
-    <div class="box" id="login-box">
-        <h3>تسجيل الدخول - G STORE</h3>
-        <input type="text" id="username" placeholder="اسم المستخدم" value="admin">
-        <input type="password" id="password" placeholder="كلمة المرور" value="1234">
-        <button onclick="loginUser()">دخول</button>
-    </div>
+    <div class="container">
+        <!-- واجهة تسجيل الدخول -->
+        <div id="loginSection">
+            <h2>G STORE - تسجيل الدخول</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">اسم المستخدم</label>
+                    <input type="text" id="username" required placeholder="أدخل اسم المستخدم">
+                </div>
+                <div class="form-group">
+                    <label for="password">كلمة المرور</label>
+                    <input type="password" id="password" required placeholder="أدخل كلمة المرور">
+                </div>
+                <button type="submit">دخول</button>
+            </form>
+            <div id="loginError" class="error-msg"></div>
+        </div>
 
-    <!-- لوحة التحكم -->
-    <div class="box hidden" id="admin-box">
-        <h3 id="welcome-msg"></h3>
-        <button onclick="logout()" style="background: #dc3545;">تسجيل الخروج</button>
-        
-        <!-- قسم إضافة موظف -->
-        <div class="admin-section" id="create-user-section" style="display: none;">
-            <h4>إضافة موظف جديد</h4>
-            <input type="text" id="new-user" placeholder="اسم المستخدم للموظف">
-            <input type="password" id="new-pass" placeholder="كلمة المرور للموظف">
-            <button onclick="addNewUser()">حفظ الموظف</button>
+        <!-- لوحة التحكم -->
+        <div id="dashboardSection" class="dashboard">
+            <h2>لوحة تحكم G STORE</h2>
+            <p>مرحباً، <span id="userDisplayName" style="font-weight: bold;"></span></p>
+            <p>الصلاحية: <span id="userDisplayRole" style="font-weight: bold; color: var(--primary-color);"></span></p>
+            
+            <!-- قسم خاص بالمدير (Admin) فقط لإضافة موظفين جدد -->
+            <div id="adminPanel" style="display: none;">
+                <hr>
+                <h3>إضافة موظف جديد سحابياً</h3>
+                <form id="addEmployeeForm">
+                    <div class="form-group">
+                        <label for="newUsername">اسم المستخدم للموظف</label>
+                        <input type="text" id="newUsername" required placeholder="اسم المستخدم الجديد">
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">كلمة المرور</label>
+                        <input type="password" id="newPassword" required placeholder="كلمة المرور">
+                    </div>
+                    <div class="form-group">
+                        <label for="newRole">الصلاحية</label>
+                        <select id="newRole">
+                            <option value="employee">موظف (Employee)</option>
+                            <option value="admin">مدير (Admin)</option>
+                        </select>
+                    </div>
+                    <button type="submit">حفظ الموظف في قاعدة البيانات</button>
+                </form>
+                <div id="actionMsg"></div>
+            </div>
+
+            <button class="logout-btn" id="logoutBtn">تسجيل الخروج</button>
         </div>
     </div>
 
-<script>
-    const SUPABASE_URL = 'https://etztnzuivagqxjahlyqa.supabase.co';
-    const SUPABASE_KEY = 'Sb_publishable_rHRivMdg5__JBuOND0tCKg_CY1Z7sA0';
-    
-    // إنشاء العميل بالطريقة المتوافقة تماماً
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    <script>
+        // إعدادات الاتصال بقاعدة بيانات Neon الخاصة بك
+        const connectionString = 'Postgresql://authenticator:npg_nthwd2kJisM1@ep-autumn-lake-b5pj66gk-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+        
+        // تهيئة الاتصال باستخدام Neon Serverless
+        const { neon } = neonConfig;
+        const sql = neon(connectionString);
 
-    async function loginUser() {
-        let u = document.getElementById('username').value.trim();
-        let p = document.getElementById('password').value.trim();
+        const loginSection = document.getElementById('loginSection');
+        const dashboardSection = document.getElementById('dashboardSection');
+        const loginForm = document.getElementById('loginForm');
+        const loginError = document.getElementById('loginError');
+        
+        const userDisplayName = document.getElementById('userDisplayName');
+        const userDisplayRole = document.getElementById('userDisplayRole');
+        const adminPanel = document.getElementById('adminPanel');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const addEmployeeForm = document.getElementById('addEmployeeForm');
+        const actionMsg = document.getElementById('actionMsg');
 
-        if (!u || !p) {
-            alert('الرجاء إدخال الحقول');
-            return;
-        }
-
-        try {
-            let { data, error } = await supabaseClient
-                .from('users')
-                .select('*')
-                .eq('username', u)
-                .eq('password', p);
-
-            if (error) {
-                alert('خطأ في القاعدة: ' + error.message);
-                return;
+        // التحقق من الجلسة المخزنة مسبقاً عند فتح الصفحة
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedUser = localStorage.getItem('gstore_user');
+            if (savedUser) {
+                const userData = JSON.parse(savedUser);
+                showDashboard(userData);
             }
+        });
 
-            if (!data || data.length === 0) {
-                alert('اسم المستخدم أو كلمة المرور غير صحيحة!');
-                return;
+        // عملية تسجيل الدخول
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loginError.textContent = 'جاري التحقق من البيانات...';
+            
+            const usernameInput = document.getElementById('username').value.trim();
+            const passwordInput = document.getElementById('password').value.trim();
+
+            try {
+                // جلب المستخدم من جدول users في قاعدة بيانات Neon
+                const result = await sql`SELECT * FROM users WHERE username = ${usernameInput} AND password = ${passwordInput}`;
+                
+                if (result.length > 0) {
+                    const user = result[0];
+                    localStorage.setItem('gstore_user', JSON.stringify(user));
+                    loginError.textContent = '';
+                    showDashboard(user);
+                } else {
+                    loginError.textContent = 'خطأ في اسم المستخدم أو كلمة المرور!';
+                }
+            } catch (err) {
+                console.error(err);
+                loginError.textContent = 'حدث خطأ في الاتصال بقاعدة البيانات. تأكد من اتصال الإنترنت.';
             }
+        });
 
-            let user = data[0];
-            localStorage.setItem('currentUser', JSON.stringify(user));
-            showDashboard(user);
+        // عرض لوحة التحكم وتحديد الصلاحيات
+        function showDashboard(user) {
+            loginSection.style.display = 'none';
+            dashboardSection.style.display = 'block';
+            
+            userDisplayName.textContent = user.username;
+            userDisplayRole.textContent = user.role === 'admin' ? 'مدير (Admin)' : 'موظف (Employee)';
 
-        } catch (err) {
-            alert('حدث استثناء تقني: ' + err.message);
-        }
-    }
-
-    function showDashboard(user) {
-        document.getElementById('login-box').classList.add('hidden');
-        document.getElementById('admin-box').classList.remove('hidden');
-        document.getElementById('welcome-msg').innerText = `مرحباً، ${user.username} (${user.role})`;
-
-        if (user.role === 'admin') {
-            document.getElementById('create-user-section').style.display = 'block';
-        }
-    }
-
-    async function addNewUser() {
-        let nu = document.getElementById('new-user').value.trim();
-        let np = document.getElementById('new-pass').value.trim();
-
-        if (!nu || !np) {
-            alert('يرجى ملء الحقول');
-            return;
+            if (user.role === 'admin') {
+                adminPanel.style.display = 'block';
+            } else {
+                adminPanel.style.display = 'none';
+            }
         }
 
-        let { error } = await supabaseClient
-            .from('users')
-            .insert([{ username: nu, password: np, role: 'employee' }]);
+        // تسجيل الخروج
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('gstore_user');
+            dashboardSection.style.display = 'none';
+            loginSection.style.display = 'block';
+            loginForm.reset();
+        });
 
-        if (error) {
-            alert('خطأ بالإضافة: ' + error.message);
-        } else {
-            alert('تم إضافة الموظف بنجاح!');
-            document.getElementById('new-user').value = '';
-            document.getElementById('new-pass').value = '';
-        }
-    }
+        // إضافة مستخدم/موظف جديد بواسطة المدير سحابياً
+        addEmployeeForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            actionMsg.textContent = 'جاري الحفظ في السحابة...';
+            actionMsg.className = '';
 
-    function logout() {
-        localStorage.removeItem('currentUser');
-        location.reload();
-    }
+            const newUsername = document.getElementById('newUsername').value.trim();
+            const newPassword = document.getElementById('newPassword').value.trim();
+            const newRole = document.getElementById('newRole').value;
 
-    window.onload = function() {
-        let saved = localStorage.getItem('currentUser');
-        if (saved) {
-            showDashboard(JSON.parse(saved));
-        }
-    }
-</script>
-
+            try {
+                // إدخال المستخدم الجديد في جدول users في Neon
+                await sql`INSERT INTO users (username, password, role) VALUES (${newUsername}, ${newPassword}, ${newRole})`;
+                
+                actionMsg.textContent = 'تم إضافة المستخدم بنجاح إلى قاعدة بيانات Neon!';
+                actionMsg.className = 'success-msg';
+                addEmployeeForm.reset();
+            } catch (err) {
+                console.error(err);
+                actionMsg.textContent = 'فشل الحفظ: ربما اسم المستخدم موجود مسبقاً أو حدث خطأ تقني.';
+                actionMsg.className = 'error-msg';
+            }
+        });
+    </script>
 </body>
 </html>
